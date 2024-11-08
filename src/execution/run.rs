@@ -2,7 +2,7 @@ use std::fs;
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use v8::{Function, V8};
+use v8::{Function, HandleScope, Local, Object, V8};
 
 pub(crate) struct GlobalContext {}
 
@@ -58,9 +58,9 @@ pub(crate) struct Input {
 
 /// Result from a task run.
 #[derive(Debug)]
-pub(crate) struct Result {
-    // TODO should be serde_json?
-    pub(crate) output: Option<String>,
+pub(crate) struct RunResult {
+    // Array of results from the run.
+    pub(crate) output: Option<serde_json::Value>,
 
     // Error string, if execution failed.
     pub(crate) error: Option<String>,
@@ -68,10 +68,10 @@ pub(crate) struct Result {
 
 /// Run all tasks against all inputs.
 /// Create an isolated environment for each distinct user.
-pub(crate) fn run_all(tasks: &[TaskSpec], inputs: &[Input]) -> Vec<Result> {
+pub(crate) fn run_all(tasks: &[TaskSpec], inputs: &[Input]) -> Vec<RunResult> {
     log::info!("Run {} tasks against {} inputs", tasks.len(), inputs.len());
 
-    let mut results: Vec<Result> = vec![];
+    let mut results: Vec<RunResult> = vec![];
 
     // Representation of the global 'environment' variable provided to all function invocations.
     let environment_json = Global::build().json();
@@ -93,12 +93,7 @@ pub(crate) fn run_all(tasks: &[TaskSpec], inputs: &[Input]) -> Vec<Result> {
             let task_proxy = task_context.global(task_scope);
 
             // Set the global 'environment' variable.
-            let environment_key = v8::String::new(task_scope, "environment").unwrap();
-            let environment_value_marshalled =
-                v8::String::new(task_scope, &environment_json).unwrap();
-            let environment_value_parsed =
-                v8::json::parse(task_scope, environment_value_marshalled).unwrap();
-            task_proxy.set(task_scope, environment_key.into(), environment_value_parsed);
+            set_variable_from_json(task_scope, task_proxy, "environment", &environment_json);
 
             // Compile the function associated with the task.
             if let Some(code) = v8::String::new(task_scope, &task_spec.code) {
@@ -111,57 +106,52 @@ pub(crate) fn run_all(tasks: &[TaskSpec], inputs: &[Input]) -> Vec<Result> {
                     let function_key = v8::String::new(task_scope, "f").unwrap();
                     if let Some(query_function) = task_proxy.get(task_scope, function_key.into()) {
                         if !query_function.is_function() {
-                            results.push(Result {
-                                output: None,
-                                error: Some(String::from("'f' was not a function.")),
-                            });
+                            error(
+                                &mut results,
+                                "'f' was not a function. Check you have don't have a variable named `f`.",
+                            );
                         } else {
                             // Guarded by enclosing if, so this is safe.
                             let as_f = query_function.cast::<Function>();
 
                             // Now execute for each input.
                             for input in inputs {
-                                // Marshall input as a string, deserialize in the VM.
-                                let json_input = serde_json::to_string(&input.data).unwrap();
-                                let marshalled_json_input =
-                                    v8::String::new(task_scope, &json_input).unwrap();
-                                let parsed_input =
-                                    v8::json::parse(task_scope, marshalled_json_input).unwrap();
+                                let input_handle = marshal_task_input(task_scope, &input.data);
 
-                                let run = as_f.call(task_scope, query_function, &[parsed_input]);
+                                let run = as_f.call(task_scope, query_function, &[input_handle]);
 
                                 if let Some(result) = run {
-                                    let result_str = result.to_rust_string_lossy(task_scope);
+                                    let result_json = v8::json::stringify(task_scope, result)
+                                        .unwrap()
+                                        .to_rust_string_lossy(task_scope);
 
-                                    results.push(Result {
-                                        output: Some(result_str),
-                                        error: None,
-                                    })
+                                    if result_json.eq(&"undefined") {
+                                        error(&mut results, "Function didn't return a value. Check for a `return` statement.");
+                                    } else if let Ok(result) = serde_json::from_str(&result_json) {
+                                        // We have no expectations of the format of the result at this stage, just that it should parse.
+                                        results.push(RunResult {
+                                            output: Some(result),
+                                            error: None,
+                                        })
+                                    } else {
+                                        error(
+                                            &mut results,
+                                            "Failed to parse result from function.",
+                                        );
+                                    }
                                 } else {
-                                    results.push(Result {
-                                        output: None,
-                                        error: Some(String::from("Failed to run code.")),
-                                    });
+                                    error(&mut results, "Failed to run the function.");
                                 }
                             }
                         }
                     } else {
-                        results.push(Result {
-                            output: None,
-                            error: Some(String::from("Didn't find named function.")),
-                        });
+                        error(&mut results, "Didn't find named function.");
                     }
                 } else {
-                    results.push(Result {
-                        output: None,
-                        error: Some(String::from("Failed to compile code.")),
-                    });
+                    error(&mut results, "Failed to compile code.");
                 }
             } else {
-                results.push(Result {
-                    output: None,
-                    error: Some(String::from("Failed to load code.")),
-                });
+                error(&mut results, "Failed to load code.");
             }
         }
     }
@@ -169,8 +159,42 @@ pub(crate) fn run_all(tasks: &[TaskSpec], inputs: &[Input]) -> Vec<Result> {
     results
 }
 
+/// Marshal a Serde JSON input a parsed value in the context.
+/// Return the handle.
+fn marshal_task_input<'s>(
+    scope: &mut HandleScope<'s>,
+    data: &serde_json::Value,
+) -> Local<'s, v8::Value> {
+    // Marshall input as a string, deserialize in the VM.
+    let json_input = serde_json::to_string(data).unwrap();
+    let marshalled_json_input = v8::String::new(scope, &json_input).unwrap();
+    v8::json::parse(scope, marshalled_json_input).unwrap()
+}
+
+/// Set a variable on the given object via its handle.
+/// Object the value should be expressed as a JSON value string.
+fn set_variable_from_json(
+    scope: &mut HandleScope,
+    object: Local<'_, Object>,
+    key: &str,
+    json_val: &str,
+) {
+    let key_marshalled = v8::String::new(scope, key).unwrap();
+    let value_marshalled = v8::String::new(scope, &json_val).unwrap();
+    let value_parsed = v8::json::parse(scope, value_marshalled).unwrap();
+    object.set(scope, key_marshalled.into(), value_parsed);
+}
+
+/// Push an error message to the results.
+fn error(results: &mut Vec<RunResult>, message: &str) {
+    results.push(RunResult {
+        output: None,
+        error: Some(String::from(message)),
+    });
+}
+
 /// Load tasks from JS files in directory.
-pub(crate) fn load(load_dir: std::path::PathBuf) -> Vec<TaskSpec> {
+pub(crate) fn load_tasks_from_dir(load_dir: std::path::PathBuf) -> Vec<TaskSpec> {
     let mut result = vec![];
 
     match fs::read_dir(load_dir) {

@@ -30,7 +30,7 @@ fn main() {
             "Reading functions from {}",
             load_dir.clone().into_os_string().into_string().unwrap()
         );
-        tasks.extend(execution::run::load(load_dir));
+        tasks.extend(execution::run::load_tasks_from_dir(load_dir));
     }
 
     log::info!("Starting metabeak");
@@ -38,9 +38,17 @@ fn main() {
     execution::run::GlobalContext::new();
 
     // Dummy inputs
-    let mut inputs: Vec<Input> = vec![Input {
-        data: json!({"input": "data"}),
-    }];
+    let mut inputs: Vec<Input> = vec![
+        Input {
+            data: json!({"input": "data1"}),
+        },
+        Input {
+            data: json!({"input": "data2"}),
+        },
+        Input {
+            data: json!({"input": "data3"}),
+        },
+    ];
 
     let results = execution::run::run_all(&tasks, &inputs);
 
