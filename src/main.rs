@@ -38,7 +38,7 @@ fn main() {
     execution::run::GlobalContext::new();
 
     // Dummy inputs
-    let mut inputs: Vec<Input> = vec![
+    let inputs: Vec<Input> = vec![
         Input {
             data: json!({"input": "data1"}),
         },

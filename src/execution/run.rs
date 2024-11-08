@@ -18,7 +18,7 @@ impl GlobalContext {
 }
 
 // This is provided by Cargo at build time, so complied as a static string.
-pub const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Environment passed into each function execution.
 #[derive(Serialize, Deserialize)]
@@ -180,7 +180,7 @@ fn set_variable_from_json(
     json_val: &str,
 ) {
     let key_marshalled = v8::String::new(scope, key).unwrap();
-    let value_marshalled = v8::String::new(scope, &json_val).unwrap();
+    let value_marshalled = v8::String::new(scope, json_val).unwrap();
     let value_parsed = v8::json::parse(scope, value_marshalled).unwrap();
     object.set(scope, key_marshalled.into(), value_parsed);
 }
