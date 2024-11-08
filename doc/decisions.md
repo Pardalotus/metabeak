@@ -19,6 +19,6 @@ V8's Rust bindings were released late 2024, which was part of the inspiration fo
 
 5, embedded JavaScript with V8.
 
-## 2: Different V8 isolate per user
+## 2: Different V8 isolate per user.
 
 Trust that the isolation is safe. But belt and braces.

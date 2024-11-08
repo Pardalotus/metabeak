@@ -3,7 +3,7 @@ Supply a query filter and result formatter in one. If the filter doesn't match, 
 This function always returns greeting messages whatever the input:
 
 ```javascript
-function filter(args) {
+function f(args) {
   return ["Hello world"];
 }
 ```

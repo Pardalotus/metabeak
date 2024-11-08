@@ -1,3 +1,3 @@
-function f() {
-  return ["Hello", "world"];
-}
+var f = function (arg) {
+  return ["ENV", JSON.stringify(environment), "ARG", JSON.stringify(arg)];
+};
