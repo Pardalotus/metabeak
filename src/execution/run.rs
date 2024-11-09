@@ -2,7 +2,7 @@ use std::fs;
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use v8::{Function, HandleScope, Local, Object, TryCatch, V8};
+use v8::{Context, Function, HandleScope, Local, Object, Value, V8};
 
 pub(crate) struct GlobalContext {}
 
@@ -95,96 +95,166 @@ pub(crate) fn run_all(tasks: &[TaskSpec], inputs: &[Input]) -> Vec<RunResult> {
             // Set the global 'environment' variable.
             set_variable_from_json(task_scope, task_proxy, "environment", &environment_json);
 
-            // Compile the function associated with the task.
-            if let Some(code) = v8::String::new(task_scope, &task_spec.code) {
-                if let Some(script) = v8::Script::compile(task_scope, code, None) {
-                    // First execute the function in the task's scope.
-                    // This will result in variables being registered, including the function 'f'.
-                    script.run(task_scope).unwrap();
+            // Load the script from the task spec and execute it.
+            // The script should define a function called 'f', which we'll retrieve from the scope.
+            // This means we don't need to retain a direct handle to the script itself once it's executed.
+            // On failure, log exception message to results.
+            let ok: bool = load_script(task_spec, &mut results, task_scope);
 
-                    // Now we can look for the function that was registered.
-                    let function_key = v8::String::new(task_scope, "f").unwrap();
-                    if let Some(query_function) = task_proxy.get(task_scope, function_key.into()) {
-                        if !query_function.is_function() {
-                            error(
-                                &mut results,
-                                String::from("'f' was not a function. Check you have don't have a variable named `f`."),
-                            );
-                        } else {
-                            // Guarded by enclosing if, so this is safe.
-                            let as_f = query_function.cast::<Function>();
+            // Now retrieve the function from the context.
+            if ok {
+                if let Some((function_as_f, function_as_v)) =
+                    get_f_function(&mut results, task_scope, task_proxy)
+                {
+                    // Execute f for each input.
+                    for input in inputs {
+                        let input_handle = marshal_task_input(task_scope, &input.data);
 
-                            // Now execute for each input.
-                            for input in inputs {
-                                let input_handle = marshal_task_input(task_scope, &input.data);
+                        // Run in a TryCatch so we can retrieve error messages.
+                        let mut try_catch_scope = v8::TryCatch::new(task_scope);
+                        let run = function_as_f.call(
+                            &mut try_catch_scope,
+                            function_as_v,
+                            &[input_handle],
+                        );
 
-                                // Run in a TryCatch so we can retrieve error messages.
-                                let mut try_catch_scope = v8::TryCatch::new(task_scope);
-                                let run = as_f.call(
-                                    &mut try_catch_scope,
-                                    query_function,
-                                    &[input_handle],
-                                );
-
-                                match run {
-                                    None => {
-                                        if let Some(ex) = try_catch_scope.exception() {
-                                            let message =
-                                                ex.to_rust_string_lossy(&mut try_catch_scope);
-                                            error(
-                                                &mut results,
-                                                format!(
-                                                    "Failed to run the function. Exception: {}",
-                                                    message
-                                                ),
-                                            );
-                                        } else {
-                                            error(&mut results,String::from( "Failed to run the function, no exception available."));
-                                        }
-                                    }
-                                    Some(result) => {
-                                        let result_json =
-                                            v8::json::stringify(&mut try_catch_scope, result)
-                                                .unwrap()
-                                                .to_rust_string_lossy(&mut try_catch_scope);
-
-                                        //  println!("SCOPE: {:?}", scope);
-
-                                        if result_json.eq(&"undefined") {
-                                            error(&mut results, String::from("Function didn't return a value. Check for a `return` statement."));
-                                        } else if let Ok(result) =
-                                            serde_json::from_str(&result_json)
-                                        {
-                                            // We have no expectations of the format of the result at this stage, just that it should parse.
-                                            results.push(RunResult {
-                                                output: Some(result),
-                                                error: None,
-                                            })
-                                        } else {
-                                            error(
-                                                &mut results,
-                                                String::from(
-                                                    "Failed to parse result from function.",
-                                                ),
-                                            );
-                                        }
-                                    }
+                        match run {
+                            None => {
+                                // Run failed. Try to report the exception.
+                                if let Some(ex) = try_catch_scope.exception() {
+                                    let message = ex.to_rust_string_lossy(&mut try_catch_scope);
+                                    error(
+                                        &mut results,
+                                        format!(
+                                            "Failed to run the function. Exception: {}",
+                                            message
+                                        ),
+                                    );
+                                } else {
+                                    error(
+                                        &mut results,
+                                        String::from(
+                                            "Failed to run the function, no exception available.",
+                                        ),
+                                    );
                                 }
                             }
+                            Some(result) => {
+                                // Run succeeded.
+                                report_result(&mut results, result, &mut try_catch_scope);
+                            }
                         }
-                    } else {
-                        error(&mut results, String::from("Didn't find named function."));
                     }
-                } else {
-                    error(&mut results, String::from("Failed to compile code."));
                 }
-            } else {
-                error(&mut results, String::from("Failed to load code."));
             }
         }
     }
 
     results
+}
+
+/// Given the output of a function run, parse it and append the result to the results list.
+fn report_result(
+    results: &mut Vec<RunResult>,
+    result: Local<'_, Value>,
+    scope: &mut HandleScope<'_, Context>,
+) {
+    let result_json = v8::json::stringify(scope, result)
+        .unwrap()
+        .to_rust_string_lossy(scope);
+
+    // Handle 'undefined' as a special case.
+    if result_json.eq(&"undefined") {
+        error(
+            results,
+            String::from("Function didn't return a value. Check for a `return` statement."),
+        );
+    } else if let Ok(result) = serde_json::from_str(&result_json) {
+        // We have no expectations of the format of the result at this stage, just that it should parse.
+        results.push(RunResult {
+            output: Some(result),
+            error: None,
+        })
+    } else {
+        error(
+             results,
+            String::from("Failed to parse result from function. Did you return objects that can't be represented in JSON?"),
+        );
+    }
+}
+
+/// From a Context in which a script has already been loaded and executed, leaving a function named 'f'.
+/// Retrieve that function and return it.
+/// Returns the function as a Value and cast to a Function, as required by the V8 function invocation API.
+/// A little strange, but lets us keep the separation of concerns, and handle both "does f exist" and "is f a function".
+fn get_f_function<'s>(
+    results: &mut Vec<RunResult>,
+    task_scope: &mut HandleScope<'s>,
+    task_proxy: Local<'s, Object>,
+) -> Option<(Local<'s, Function>, Local<'s, Value>)> {
+    // Now we can look for the function that was registered.
+    let function_key = v8::String::new(task_scope, "f").unwrap();
+
+    if let Some(query_function) = task_proxy.get(task_scope, function_key.into()) {
+        if !query_function.is_function() {
+            error(
+                results,
+                String::from(
+                    "'f' was not a function. Check you have don't have a conflicting variable named `f`.",
+                ),
+            );
+            None
+        } else {
+            // Guarded by enclosing if, so this is safe.
+            Some((query_function.cast::<Function>(), query_function))
+        }
+    } else {
+        error(results, String::from("Didn't find named function."));
+        None
+    }
+}
+
+fn load_script(
+    task_spec: &TaskSpec,
+    results: &mut Vec<RunResult>,
+    task_scope: &mut HandleScope<'_, Context>,
+) -> bool {
+    if let Some(code) = v8::String::new(task_scope, &task_spec.code) {
+        if let Some(script) = v8::Script::compile(task_scope, code, None) {
+            let mut try_catch_scope = v8::TryCatch::new(task_scope);
+
+            let run = script.run(&mut try_catch_scope);
+
+            match run {
+                None => {
+                    if let Some(ex) = try_catch_scope.exception() {
+                        let message = ex.to_rust_string_lossy(&mut try_catch_scope);
+                        error(
+                            results,
+                            format!("Failed to load the function. Exception: {}", message),
+                        );
+                        false
+                    } else {
+                        error(
+                            results,
+                            String::from("Failed to load the function, no exception available."),
+                        );
+                        false
+                    }
+                }
+                Some(_) => {
+                    // We don't care about the result, just that it executed without error.
+                    true
+                }
+            }
+        } else {
+            error(results, String::from("Failed to compile code."));
+            false
+        }
+    } else {
+        error(results, String::from("Failed to load code."));
+        false
+    }
 }
 
 /// Marshal a Serde JSON input a parsed value in the context.
@@ -255,5 +325,3 @@ pub(crate) fn load_tasks_from_dir(load_dir: std::path::PathBuf) -> Vec<TaskSpec>
 
     result
 }
-
-// todo validate on load
