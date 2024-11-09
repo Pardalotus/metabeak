@@ -38,19 +38,12 @@ fn main() {
     execution::run::GlobalContext::new();
 
     // Dummy inputs
-    let inputs: Vec<Input> = vec![
-        Input {
-            data: json!({"input": "data1"}),
-        },
-        Input {
-            data: json!({"input": "data2"}),
-        },
-        Input {
-            data: json!({"input": "data3"}),
-        },
-    ];
+    let inputs: Vec<Input> = vec![Input {
+        data: json!({"input": "data1"}),
+    }];
 
     let results = execution::run::run_all(&tasks, &inputs);
+    // TODO check format of results
 
     log::info!("Got {} results", results.len());
 

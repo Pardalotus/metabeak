@@ -2,7 +2,7 @@ use std::fs;
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use v8::{Function, HandleScope, Local, Object, V8};
+use v8::{Function, HandleScope, Local, Object, TryCatch, V8};
 
 pub(crate) struct GlobalContext {}
 
@@ -84,12 +84,12 @@ pub(crate) fn run_all(tasks: &[TaskSpec], inputs: &[Input]) -> Vec<RunResult> {
         log::info!("Running {} tasks for user_id {}", task_specs.len(), user_id);
 
         let isolate = &mut v8::Isolate::new(Default::default());
-        let scope = &mut v8::HandleScope::new(isolate);
+        let handle_scope = &mut v8::HandleScope::new(isolate);
 
         // Each task associated with the user.
         for task_spec in task_specs.iter() {
-            let task_context = v8::Context::new(scope, Default::default());
-            let task_scope = &mut v8::ContextScope::new(scope, task_context);
+            let task_context = v8::Context::new(handle_scope, Default::default());
+            let task_scope = &mut v8::ContextScope::new(handle_scope, task_context);
             let task_proxy = task_context.global(task_scope);
 
             // Set the global 'environment' variable.
@@ -108,7 +108,7 @@ pub(crate) fn run_all(tasks: &[TaskSpec], inputs: &[Input]) -> Vec<RunResult> {
                         if !query_function.is_function() {
                             error(
                                 &mut results,
-                                "'f' was not a function. Check you have don't have a variable named `f`.",
+                                String::from("'f' was not a function. Check you have don't have a variable named `f`."),
                             );
                         } else {
                             // Guarded by enclosing if, so this is safe.
@@ -118,40 +118,68 @@ pub(crate) fn run_all(tasks: &[TaskSpec], inputs: &[Input]) -> Vec<RunResult> {
                             for input in inputs {
                                 let input_handle = marshal_task_input(task_scope, &input.data);
 
-                                let run = as_f.call(task_scope, query_function, &[input_handle]);
+                                // Run in a TryCatch so we can retrieve error messages.
+                                let mut try_catch_scope = v8::TryCatch::new(task_scope);
+                                let run = as_f.call(
+                                    &mut try_catch_scope,
+                                    query_function,
+                                    &[input_handle],
+                                );
 
-                                if let Some(result) = run {
-                                    let result_json = v8::json::stringify(task_scope, result)
-                                        .unwrap()
-                                        .to_rust_string_lossy(task_scope);
-
-                                    if result_json.eq(&"undefined") {
-                                        error(&mut results, "Function didn't return a value. Check for a `return` statement.");
-                                    } else if let Ok(result) = serde_json::from_str(&result_json) {
-                                        // We have no expectations of the format of the result at this stage, just that it should parse.
-                                        results.push(RunResult {
-                                            output: Some(result),
-                                            error: None,
-                                        })
-                                    } else {
-                                        error(
-                                            &mut results,
-                                            "Failed to parse result from function.",
-                                        );
+                                match run {
+                                    None => {
+                                        if let Some(ex) = try_catch_scope.exception() {
+                                            let message =
+                                                ex.to_rust_string_lossy(&mut try_catch_scope);
+                                            error(
+                                                &mut results,
+                                                format!(
+                                                    "Failed to run the function. Exception: {}",
+                                                    message
+                                                ),
+                                            );
+                                        } else {
+                                            error(&mut results,String::from( "Failed to run the function, no exception available."));
+                                        }
                                     }
-                                } else {
-                                    error(&mut results, "Failed to run the function.");
+                                    Some(result) => {
+                                        let result_json =
+                                            v8::json::stringify(&mut try_catch_scope, result)
+                                                .unwrap()
+                                                .to_rust_string_lossy(&mut try_catch_scope);
+
+                                        //  println!("SCOPE: {:?}", scope);
+
+                                        if result_json.eq(&"undefined") {
+                                            error(&mut results, String::from("Function didn't return a value. Check for a `return` statement."));
+                                        } else if let Ok(result) =
+                                            serde_json::from_str(&result_json)
+                                        {
+                                            // We have no expectations of the format of the result at this stage, just that it should parse.
+                                            results.push(RunResult {
+                                                output: Some(result),
+                                                error: None,
+                                            })
+                                        } else {
+                                            error(
+                                                &mut results,
+                                                String::from(
+                                                    "Failed to parse result from function.",
+                                                ),
+                                            );
+                                        }
+                                    }
                                 }
                             }
                         }
                     } else {
-                        error(&mut results, "Didn't find named function.");
+                        error(&mut results, String::from("Didn't find named function."));
                     }
                 } else {
-                    error(&mut results, "Failed to compile code.");
+                    error(&mut results, String::from("Failed to compile code."));
                 }
             } else {
-                error(&mut results, "Failed to load code.");
+                error(&mut results, String::from("Failed to load code."));
             }
         }
     }
@@ -186,7 +214,7 @@ fn set_variable_from_json(
 }
 
 /// Push an error message to the results.
-fn error(results: &mut Vec<RunResult>, message: &str) {
+fn error(results: &mut Vec<RunResult>, message: String) {
     results.push(RunResult {
         output: None,
         error: Some(String::from(message)),
@@ -227,3 +255,5 @@ pub(crate) fn load_tasks_from_dir(load_dir: std::path::PathBuf) -> Vec<TaskSpec>
 
     result
 }
+
+// todo validate on load
