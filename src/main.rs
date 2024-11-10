@@ -35,7 +35,7 @@ fn main() {
 
     log::info!("Starting metabeak");
 
-    execution::run::GlobalContext::new();
+    execution::run::init();
 
     // Dummy inputs
     let inputs: Vec<Input> = vec![Input {
@@ -43,12 +43,11 @@ fn main() {
     }];
 
     let results = execution::run::run_all(&tasks, &inputs);
-    // TODO check format of results
 
     log::info!("Got {} results", results.len());
 
     for result in results.iter() {
-        log::info!("Result:");
+        log::info!("Result for: {}", result.task_id);
         log::info!("Error: {:?}", result.error);
         log::info!("Output: {:?}", result.output);
     }

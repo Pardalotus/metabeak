@@ -1,20 +1,16 @@
+//! Run functions in V8.
+//! For each function, spin up a V8 environment and execute the function.
+
 use std::fs;
 
-use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use v8::{Context, Function, HandleScope, Local, Object, Value, V8};
 
-pub(crate) struct GlobalContext {}
-
-/// Global execution context for v8.
-impl GlobalContext {
-    pub(crate) fn new() -> GlobalContext {
-        let platform = v8::new_default_platform(0, false).make_shared();
-        V8::initialize_platform(platform);
-        V8::initialize();
-
-        GlobalContext {}
-    }
+/// Initialize the V8 environment.
+pub(crate) fn init() {
+    let platform = v8::new_default_platform(0, false).make_shared();
+    V8::initialize_platform(platform);
+    V8::initialize();
 }
 
 // This is provided by Cargo at build time, so complied as a static string.
@@ -43,8 +39,8 @@ impl Global {
 /// A task to be run.
 #[derive(Debug)]
 pub(crate) struct TaskSpec {
-    /// User ID executing the TaskSpec. This may not correspond to an entity, but is reserved for future use.
-    pub(crate) user_id: u64,
+    /// ID of the task, to allow collation of results.
+    pub(crate) task_id: u64,
 
     /// JavaScript code that must contain a function named 'f'.
     pub(crate) code: String,
@@ -59,10 +55,13 @@ pub(crate) struct Input {
 /// Result from a task run.
 #[derive(Debug)]
 pub(crate) struct RunResult {
-    // Array of results from the run.
+    /// ID of the task.
+    pub(crate) task_id: u64,
+
+    /// Array of results from the run.
     pub(crate) output: Option<serde_json::Value>,
 
-    // Error string, if execution failed.
+    /// Error string, if execution failed.
     pub(crate) error: Option<String>,
 }
 
@@ -76,73 +75,64 @@ pub(crate) fn run_all(tasks: &[TaskSpec], inputs: &[Input]) -> Vec<RunResult> {
     // Representation of the global 'environment' variable provided to all function invocations.
     let environment_json = Global::build().json();
 
-    // Isolated environment for each user.
-    // Each environment needs data marshaling into it, so there's repeated creation of handles and conversion of data.
-    let by_user_id = tasks.iter().map(|t| (t.user_id, t)).into_group_map();
-
-    for (user_id, task_specs) in by_user_id.iter() {
-        log::info!("Running {} tasks for user_id {}", task_specs.len(), user_id);
+    // Isolated environment for each task, re-used for all input data.
+    for task_spec in tasks.iter() {
+        log::info!("Running task id {}", task_spec.task_id);
 
         let isolate = &mut v8::Isolate::new(Default::default());
         let handle_scope = &mut v8::HandleScope::new(isolate);
 
         // Each task associated with the user.
-        for task_spec in task_specs.iter() {
-            let task_context = v8::Context::new(handle_scope, Default::default());
-            let task_scope = &mut v8::ContextScope::new(handle_scope, task_context);
-            let task_proxy = task_context.global(task_scope);
+        let task_context = v8::Context::new(handle_scope, Default::default());
+        let task_scope = &mut v8::ContextScope::new(handle_scope, task_context);
+        let task_proxy = task_context.global(task_scope);
 
-            // Set the global 'environment' variable.
-            set_variable_from_json(task_scope, task_proxy, "environment", &environment_json);
+        // Set the global 'environment' variable.
+        set_variable_from_json(task_scope, task_proxy, "environment", &environment_json);
 
-            // Load the script from the task spec and execute it.
-            // The script should define a function called 'f', which we'll retrieve from the scope.
-            // This means we don't need to retain a direct handle to the script itself once it's executed.
-            // On failure, log exception message to results.
-            let ok: bool = load_script(task_spec, &mut results, task_scope);
+        // Load the script from the task spec and execute it.
+        // The script should define a function called 'f', which we'll retrieve from the scope.
+        // This means we don't need to retain a direct handle to the script itself once it's executed.
+        // On failure, log exception message to results.
+        let ok: bool = load_script(task_spec, &mut results, task_scope);
 
-            // Now retrieve the function from the context.
-            if ok {
-                if let Some((function_as_f, function_as_v)) =
-                    get_f_function(&mut results, task_scope, task_proxy)
-                {
-                    // Execute f for each input.
-                    for input in inputs {
-                        let input_handle = marshal_task_input(task_scope, &input.data);
+        // Now retrieve the function from the context.
+        if ok {
+            if let Some((function_as_f, function_as_v)) =
+                get_f_function(&task_spec, &mut results, task_scope, task_proxy)
+            {
+                // Execute f for each input.
+                for input in inputs {
+                    let input_handle = marshal_task_input(task_scope, &input.data);
 
-                        // Run in a TryCatch so we can retrieve error messages.
-                        let mut try_catch_scope = v8::TryCatch::new(task_scope);
-                        let run = function_as_f.call(
-                            &mut try_catch_scope,
-                            function_as_v,
-                            &[input_handle],
-                        );
+                    // Run in a TryCatch so we can retrieve error messages.
+                    let mut try_catch_scope = v8::TryCatch::new(task_scope);
+                    let run =
+                        function_as_f.call(&mut try_catch_scope, function_as_v, &[input_handle]);
 
-                        match run {
-                            None => {
-                                // Run failed. Try to report the exception.
-                                if let Some(ex) = try_catch_scope.exception() {
-                                    let message = ex.to_rust_string_lossy(&mut try_catch_scope);
-                                    error(
-                                        &mut results,
-                                        format!(
-                                            "Failed to run the function. Exception: {}",
-                                            message
-                                        ),
-                                    );
-                                } else {
-                                    error(
-                                        &mut results,
-                                        String::from(
-                                            "Failed to run the function, no exception available.",
-                                        ),
-                                    );
-                                }
+                    match run {
+                        None => {
+                            // Run failed. Try to report the exception.
+                            if let Some(ex) = try_catch_scope.exception() {
+                                let message = ex.to_rust_string_lossy(&mut try_catch_scope);
+                                report_error(
+                                    task_spec,
+                                    &mut results,
+                                    format!("Failed to run the function. Exception: {}", message),
+                                );
+                            } else {
+                                report_error(
+                                    task_spec,
+                                    &mut results,
+                                    String::from(
+                                        "Failed to run the function, no exception available.",
+                                    ),
+                                );
                             }
-                            Some(result) => {
-                                // Run succeeded.
-                                report_result(&mut results, result, &mut try_catch_scope);
-                            }
+                        }
+                        Some(result) => {
+                            // Run succeeded.
+                            report_result(task_spec, &mut results, result, &mut try_catch_scope);
                         }
                     }
                 }
@@ -155,6 +145,7 @@ pub(crate) fn run_all(tasks: &[TaskSpec], inputs: &[Input]) -> Vec<RunResult> {
 
 /// Given the output of a function run, parse it and append the result to the results list.
 fn report_result(
+    task_spec: &TaskSpec,
     results: &mut Vec<RunResult>,
     result: Local<'_, Value>,
     scope: &mut HandleScope<'_, Context>,
@@ -165,22 +156,35 @@ fn report_result(
 
     // Handle 'undefined' as a special case.
     if result_json.eq(&"undefined") {
-        error(
+        report_error(
+            task_spec,
             results,
             String::from("Function didn't return a value. Check for a `return` statement."),
         );
     } else if let Ok(result) = serde_json::from_str(&result_json) {
         // We have no expectations of the format of the result at this stage, just that it should parse.
         results.push(RunResult {
+            task_id: task_spec.task_id,
             output: Some(result),
             error: None,
         })
     } else {
-        error(
+        report_error(
+            task_spec,
+
              results,
             String::from("Failed to parse result from function. Did you return objects that can't be represented in JSON?"),
         );
     }
+}
+
+/// Push an error message to the results.
+fn report_error(task_spec: &TaskSpec, results: &mut Vec<RunResult>, message: String) {
+    results.push(RunResult {
+        task_id: task_spec.task_id,
+        output: None,
+        error: Some(String::from(message)),
+    });
 }
 
 /// From a Context in which a script has already been loaded and executed, leaving a function named 'f'.
@@ -188,6 +192,7 @@ fn report_result(
 /// Returns the function as a Value and cast to a Function, as required by the V8 function invocation API.
 /// A little strange, but lets us keep the separation of concerns, and handle both "does f exist" and "is f a function".
 fn get_f_function<'s>(
+    task_spec: &TaskSpec,
     results: &mut Vec<RunResult>,
     task_scope: &mut HandleScope<'s>,
     task_proxy: Local<'s, Object>,
@@ -197,7 +202,8 @@ fn get_f_function<'s>(
 
     if let Some(query_function) = task_proxy.get(task_scope, function_key.into()) {
         if !query_function.is_function() {
-            error(
+            report_error(            task_spec,
+
                 results,
                 String::from(
                     "'f' was not a function. Check you have don't have a conflicting variable named `f`.",
@@ -209,7 +215,11 @@ fn get_f_function<'s>(
             Some((query_function.cast::<Function>(), query_function))
         }
     } else {
-        error(results, String::from("Didn't find named function."));
+        report_error(
+            task_spec,
+            results,
+            String::from("Didn't find named function."),
+        );
         None
     }
 }
@@ -229,13 +239,15 @@ fn load_script(
                 None => {
                     if let Some(ex) = try_catch_scope.exception() {
                         let message = ex.to_rust_string_lossy(&mut try_catch_scope);
-                        error(
+                        report_error(
+                            task_spec,
                             results,
                             format!("Failed to load the function. Exception: {}", message),
                         );
                         false
                     } else {
-                        error(
+                        report_error(
+                            task_spec,
                             results,
                             String::from("Failed to load the function, no exception available."),
                         );
@@ -248,11 +260,11 @@ fn load_script(
                 }
             }
         } else {
-            error(results, String::from("Failed to compile code."));
+            report_error(task_spec, results, String::from("Failed to compile code."));
             false
         }
     } else {
-        error(results, String::from("Failed to load code."));
+        report_error(task_spec, results, String::from("Failed to load code."));
         false
     }
 }
@@ -283,14 +295,6 @@ fn set_variable_from_json(
     object.set(scope, key_marshalled.into(), value_parsed);
 }
 
-/// Push an error message to the results.
-fn error(results: &mut Vec<RunResult>, message: String) {
-    results.push(RunResult {
-        output: None,
-        error: Some(String::from(message)),
-    });
-}
-
 /// Load tasks from JS files in directory.
 pub(crate) fn load_tasks_from_dir(load_dir: std::path::PathBuf) -> Vec<TaskSpec> {
     let mut result = vec![];
@@ -308,7 +312,7 @@ pub(crate) fn load_tasks_from_dir(load_dir: std::path::PathBuf) -> Vec<TaskSpec>
                                 Err(e) => log::error!("Can't read file: {}", e),
                                 Ok(content) => {
                                     result.push(TaskSpec {
-                                        user_id: 0,
+                                        task_id: 0,
                                         code: content,
                                     });
                                 }

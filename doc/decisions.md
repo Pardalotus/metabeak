@@ -19,6 +19,18 @@ V8's Rust bindings were released late 2024, which was part of the inspiration fo
 
 5, embedded JavaScript with V8.
 
-## 2: Different V8 isolate per user.
+## 2: Different V8 context per task.
 
-Trust that the isolation is safe. But belt and braces.
+## 3: Maintain V8 context between task executions
+
+## 4: Simple function
+
+Options:
+
+1. Named function, e.g. `function f() { return ["result"] };`
+2. Expression e.g. `["result"]`
+3. JS Module ([e.g.](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules).
+
+### Decision
+
+1, named function. Simple enough for quick usage. Easy to add optional values, e.g. description, as variables.

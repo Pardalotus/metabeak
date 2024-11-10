@@ -10,9 +10,26 @@ function f(args) {
 }
 ```
 
+You can use:
+ - plain JavaScript features
 
+You can't use:
+ - setTimeout
+ - network
+
+
+
+# License
+
+All the input data to your function is CC0. The output of your function, and the function itself, is also considered CC0. Other users may be able to discover your function and its output.
+
+Don't put any secrets in your function. You can put ORCIDs and email addresses in the function if you don't mind them being public.
+
+If you want to discuss a private code / data feature, please get in touch.
 
 # FAQ
+
+
 
 **Why does my function have to be in a function? Can't I just write an expression directly?**
 
