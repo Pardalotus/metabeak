@@ -1,6 +1,8 @@
 # Pardalotus Metabeak
 
-Pardalotus metadata events API. Work in progress, including the name!
+The code that powers the Pardalotus API.
+
+Work in progress, pre-release.
 
 # License
 
