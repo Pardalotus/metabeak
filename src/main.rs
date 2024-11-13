@@ -80,5 +80,7 @@ async fn main() {
         log::info!("Finish executor.");
     }
 
+    // Gracefully closing the pool avoids extraneous errors in the PostgreSQL log.
+    database::close_pool(&db_pool).await;
     log::info!("Exit metabeak");
 }

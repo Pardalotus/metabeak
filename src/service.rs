@@ -1,7 +1,6 @@
 //! Service layer
 //! For running and coordinating functions.
 
-use std::time::SystemTime;
 
 use serde_json::Value;
 use sha1::{Digest, Sha1};

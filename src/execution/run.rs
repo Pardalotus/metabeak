@@ -446,38 +446,3 @@ fn set_variable_from_json(
     let value_parsed = v8::json::parse(scope, value_marshalled).unwrap();
     object.set(scope, key_marshalled.into(), value_parsed);
 }
-
-/// Load tasks from JS files in directory.
-pub(crate) fn load_tasks_from_dir(load_dir: std::path::PathBuf) -> Vec<HandlerSpec> {
-    let mut result = vec![];
-
-    match fs::read_dir(load_dir) {
-        Err(e) => {
-            log::error!("Can't load functions from disk: {}", e);
-        }
-        Ok(listing) => {
-            for file in listing {
-                match file {
-                    Ok(entry) => {
-                        if entry.path().is_file() {
-                            match fs::read_to_string(entry.path()) {
-                                Err(e) => log::error!("Can't read file: {}", e),
-                                Ok(content) => {
-                                    result.push(HandlerSpec {
-                                        handler_id: 0,
-                                        code: content,
-                                    });
-                                }
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        log::error!("Can't load file: {}", e);
-                    }
-                }
-            }
-        }
-    }
-
-    result
-}

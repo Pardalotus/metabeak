@@ -10,6 +10,10 @@ pub(crate) async fn get_pool() -> Result<Pool<Postgres>, sqlx::Error> {
     return Ok(pool);
 }
 
+pub(crate) async fn close_pool(pool: &Pool<Postgres>) {
+    pool.close().await
+}
+
 #[derive(Debug, Copy, Clone)]
 pub(crate) enum HandlerState {
     Enabled = 1,
