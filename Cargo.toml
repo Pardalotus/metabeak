@@ -11,5 +11,8 @@ log = "0.4.22"
 logger = "0.4.0"
 serde = { version = "1.0.214", features = ["derive"] }
 serde_json = "1.0.132"
+sha1 = "0.10.6"
+sqlx = { version = "0.8.2", features = ["runtime-tokio", "postgres"] }
 structopt = "0.3.26"
+tokio = { version = "1.41.1", features = ["macros", "rt-multi-thread"] }
 v8 = "130.0.1"
