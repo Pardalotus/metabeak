@@ -6,7 +6,7 @@ use sha1::{Digest, Sha1};
 use sqlx::{Error, Pool, Postgres};
 
 use crate::{
-    database::{self, EventQueueState},
+    db::{self, event::EventQueueState},
     execution::{
         self,
         model::{Event, HandlerSpec},
@@ -22,7 +22,7 @@ pub(crate) async fn load_handler_functions_from_disk(
 ) {
     let tasks = local::load_tasks_from_dir(path);
     for (filename, task) in tasks {
-        match load_function(pool, &task).await {
+        match load_handler(pool, &task).await {
             TaskLoadResult::New { task_id } => {
                 log::info!("Loaded task {} from {}", task_id, &filename)
             }
@@ -54,13 +54,13 @@ enum TaskLoadResult {
 }
 
 /// Load a function. On creation return New ID, or report that it already exists.
-async fn load_function(pool: &Pool<Postgres>, task: &HandlerSpec) -> TaskLoadResult {
+async fn load_handler(pool: &Pool<Postgres>, task: &HandlerSpec) -> TaskLoadResult {
     let hash = task_hash(task);
 
     log::info!("Load function {}", hash);
 
     let insert_result =
-        database::insert_task(task, &hash, 0, database::HandlerState::Enabled, pool);
+        db::handler::insert_handler(task, &hash, 0, db::handler::HandlerState::Enabled, pool);
 
     match insert_result.await {
         Ok(handler_id) => TaskLoadResult::New {
@@ -94,7 +94,7 @@ pub(crate) async fn load_events_from_disk(
                         Ok(json) => {
                             if let Some(event) = Event::from_json_value(&json) {
                                 // Normalize
-                                database::insert_event(&event, EventQueueState::New, &mut tx)
+                                db::event::insert_event(&event, EventQueueState::New, &mut tx)
                                     .await?;
                             } else {
                                 log::error!(
@@ -120,41 +120,6 @@ pub(crate) async fn load_events_from_disk(
 
     Ok(())
 }
-
-// /// Load supplied inputs into the queue.
-// ///
-// pub(crate) async fn load_inputs(
-//     pool: &Pool<Postgres>,
-//     inputs: &[Event],
-// ) -> Result<(), sqlx::Error> {
-//     let mut tx = pool.begin().await?;
-
-//     // todo check
-
-//     for input in inputs {
-//         match database::insert_input(
-//             input,
-//             database::TaskInputState::New,
-//             MetadataSource::Crossref,
-//             &mut tx,
-//         )
-//         .await
-//         {
-//             Ok(x) => log::info!("Inserted input {}", x),
-//             Err(x) => log::error!("Error inserting input {:?}", x),
-//         }
-//     }
-
-//     match tx.commit().await {
-//         Ok(x) => {
-//             log::info!("TX commit ok, {:?}", x);
-//         }
-//         Err(x) => {
-//             log::error!("TX error {:?}", x);
-//         }
-//     }
-//     Ok(())
-// }
 
 #[derive(Debug)]
 pub(crate) struct PumpResult {
@@ -192,18 +157,18 @@ pub(crate) async fn try_pump(pool: &Pool<Postgres>) -> Result<PumpResult, Error>
 
     let mut tx = pool.begin().await?;
 
-    let inputs = database::poll(1000, &mut tx).await?;
+    let inputs = db::event::poll(1000, &mut tx).await?;
 
     // Get all handlers. Do so from inside the transaction so there's a
     // consistent view of the handlers table. If it becomes necessary to chunk
     // into batches of handlers in future, this will be important.
-    let handlers: Vec<HandlerSpec> = database::all_enabled_handlers(&mut tx).await?;
+    let handlers: Vec<HandlerSpec> = db::handler::all_enabled_handlers(&mut tx).await?;
 
     let start_execution = std::time::Instant::now();
     let results = execution::run::run_all(&handlers, &inputs);
 
     let start_save = std::time::Instant::now();
-    database::save_results(&results, &mut tx).await?;
+    db::handler::save_results(&results, &mut tx).await?;
 
     log::info!("Got {} results", results.len());
 

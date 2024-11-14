@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 use structopt::StructOpt;
-mod database;
+
+mod db;
 mod execution;
 mod local;
 mod service;
@@ -24,10 +25,7 @@ struct Options {
     )]
     load_events: Option<PathBuf>,
 
-    #[structopt(
-        long,
-        help("Run a single cycle of the pump and exit. This will poll from the inputs and run functions.")
-    )]
+    #[structopt(long, help("Run a single cycle of the Event Handler pump and exit."))]
     execute_one: bool,
 }
 
@@ -40,7 +38,7 @@ async fn main() {
     let opt = Options::from_args();
 
     // Boot the database.
-    let db_pool = database::get_pool().await.unwrap();
+    let db_pool = db::pool::get_pool().await.unwrap();
 
     // Boot the v8 environment, as it's used in both validation and execution of functions.
     execution::run::init();
@@ -54,7 +52,6 @@ async fn main() {
         service::load_handler_functions_from_disk(&db_pool, path).await;
     }
 
-    // Run Optional features.
     if let Some(path) = opt.load_events {
         log::info!(
             "Reading events from {}",
@@ -73,13 +70,12 @@ async fn main() {
     // Run executor.
     if opt.execute_one {
         log::info!("Starting executor...");
-
         // For now just a sungle poll and exit.
         service::pump(&db_pool).await;
         log::info!("Finish executor.");
     }
 
     // Gracefully closing the pool avoids extraneous errors in the PostgreSQL log.
-    database::close_pool(&db_pool).await;
+    db::pool::close_pool(&db_pool).await;
     log::info!("Exit metabeak");
 }

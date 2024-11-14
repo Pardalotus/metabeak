@@ -156,3 +156,17 @@ It may be necessary to revisit this if there's enough need to scale out.
 Tuples on the `event` table will be comparatively large, as they contain a blob
 of JSON. Setting a flag on this would lead to bloat from dead tuples. The
 `event_queue` table is therefore separate to the `event` table.
+
+## DR-0017: DRAFT Agent is responsible for generation of Events and populating Metadata Assertions.
+
+DRAFT
+
+Data flows from metadata source (e.g. Crossref) through to the input Events given to Handlers and the metadata assertions that they access.
+
+Rather than build a universal pipeline that handles concurrency etc, instead make it the responsibility of Agents to run everything needed. E.g. Crossref agent will:
+
+1. Poll Crossref for recent metadata assertions. Do its own bookkeeping.
+2. Make metadata assertions with Crossref as the source.
+3. Populate a queue for processing new metadata assertions into Events.
+4. Listen on metadata assertion queue. Extract events.
+5.
