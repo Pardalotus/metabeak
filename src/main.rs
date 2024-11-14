@@ -4,7 +4,6 @@ mod database;
 mod execution;
 mod local;
 mod service;
-use tokio;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "metabeak", about = "Pardalotus Metabeak API.")]

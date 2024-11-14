@@ -80,7 +80,7 @@ fn report_error(
         event_id,
         handler_id: handler_spec.handler_id,
         output: None,
-        error: Some(String::from(message)),
+        error: Some(message),
     });
 }
 
@@ -184,7 +184,7 @@ fn load_script(
 /// Marshal a JSON input a parsed value in the context.
 /// Return the handle.
 fn marshal_task_input<'s>(scope: &mut HandleScope<'s>, json: &str) -> Local<'s, v8::Value> {
-    let marshalled_json_input = v8::String::new(scope, &json).unwrap();
+    let marshalled_json_input = v8::String::new(scope, json).unwrap();
     v8::json::parse(scope, marshalled_json_input).unwrap()
 }
 
@@ -240,7 +240,7 @@ pub(crate) fn run_all(handlers: &[HandlerSpec], inputs: &[Event]) -> Vec<RunResu
         // Now retrieve the function from the context.
         if ok {
             if let Some((function_as_f, function_as_v)) =
-                get_f_function(&handler_spec, &mut results, task_scope, task_proxy)
+                get_f_function(handler_spec, &mut results, task_scope, task_proxy)
             {
                 // Execute f for each input.
                 for input in inputs {

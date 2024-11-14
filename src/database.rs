@@ -7,7 +7,7 @@ pub(crate) async fn get_pool() -> Result<Pool<Postgres>, sqlx::Error> {
         .connect("postgres://metabeak:metabeak@localhost/metabeak")
         .await?;
 
-    return Ok(pool);
+    Ok(pool)
 }
 
 pub(crate) async fn close_pool(pool: &Pool<Postgres>) {
@@ -99,7 +99,7 @@ impl EventAnalyzerId {
         }
     }
 
-    pub(crate) fn to_int_value(&self) -> i32 {
+    pub(crate) fn to_int_value(self) -> i32 {
         match self {
             EventAnalyzerId::Lifecycle => 2,
             EventAnalyzerId::Test => 1,
@@ -218,7 +218,7 @@ pub(crate) async fn all_enabled_handlers<'a>(
 }
 
 pub(crate) async fn save_results<'a>(
-    results: &Vec<RunResult>,
+    results: &[RunResult],
     tx: &mut Transaction<'a, Postgres>,
 ) -> Result<(), sqlx::Error> {
     for result in results.iter() {

@@ -94,7 +94,7 @@ impl Event {
     /// None if there was a problem parsing it.
     /// This clones subfields of the JSON Value, and is on a hot path. Candidate for optimisation if needed.
     pub(crate) fn from_json_value(input: &str) -> Option<Event> {
-        match serde_json::from_str::<serde_json::Value>(&input) {
+        match serde_json::from_str::<serde_json::Value>(input) {
             Ok(data) => match data {
                 serde_json::Value::Object(data_obj) => {
                     let analyzer_str = data_obj.get("analyzer")?.as_str().unwrap_or("UNKNOWN");
@@ -111,7 +111,7 @@ impl Event {
                     };
 
                     let mut normalized_event = serde_json::Map::new();
-                    for field in data_obj.keys().into_iter() {
+                    for field in data_obj.keys() {
                         if !(field.eq("analyzer") || field.eq("source")) {
                             if let Some(obj) = data_obj.get(field) {
                                 normalized_event.insert(field.clone(), obj.clone());

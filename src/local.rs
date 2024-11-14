@@ -55,7 +55,7 @@ pub(crate) fn load_files_from_dir(
         if path.is_file() {
             let content = fs::read_to_string(&path)?;
             let path = String::from(path.to_str().unwrap_or("UNKNOWN"));
-            result.push((path, String::from(content)));
+            result.push((path, content));
         }
     }
 
