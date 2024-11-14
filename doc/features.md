@@ -4,20 +4,20 @@ This list of features, implemented and TODO, is for keeping track of development
 
 ## Function execution
 
-- Load functions from local disk.
+- Load functions from local disk to database.
 - Catch and report exception executing functions.
 - Catch and report exception loading JS file.
 - Supply global context to all invocations.
-- Supply input to all function invocations.
+- Supply Event input to all function invocations.
 - Store result from function execution.
-- Expose and store console.log, console.error
 - TODO
+  - Expose and store console.log, console.error
   - Heap limit, OOM kill.
   - Execution time limit and kill.
   - Limit on file size.
   - Validate function on load for size.
   - Disable broken functions and report
-- Description and author fields as optional.
+  - Description and author fields as optional.
 
 ## Events
 

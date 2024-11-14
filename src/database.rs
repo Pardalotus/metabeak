@@ -1,4 +1,4 @@
-use crate::execution::run::{Event, HandlerSpec, RunResult};
+use crate::execution::model::{Event, HandlerSpec, RunResult};
 use sqlx::{postgres::PgPoolOptions, prelude::FromRow, Pool, Postgres, Transaction};
 
 pub(crate) async fn get_pool() -> Result<Pool<Postgres>, sqlx::Error> {
@@ -21,7 +21,7 @@ pub(crate) enum HandlerState {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub(crate) enum TaskInputState {
+pub(crate) enum EventQueueState {
     New = 1,
     Processed = 2,
 }
@@ -68,41 +68,41 @@ impl MetadataSource {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub(crate) enum EventAnalyzer {
+pub(crate) enum EventAnalyzerId {
     Unknown = 0,
     Test = 1,
     Lifecycle = 2,
 }
 
-impl EventAnalyzer {
-    pub(crate) fn from_str_value(value: &str) -> EventAnalyzer {
+impl EventAnalyzerId {
+    pub(crate) fn from_str_value(value: &str) -> EventAnalyzerId {
         match value {
-            "lifecycle" => EventAnalyzer::Lifecycle,
-            "test" => EventAnalyzer::Test,
-            _ => EventAnalyzer::Unknown,
+            "lifecycle" => EventAnalyzerId::Lifecycle,
+            "test" => EventAnalyzerId::Test,
+            _ => EventAnalyzerId::Unknown,
         }
     }
 
     pub(crate) fn to_str_value(&self) -> String {
         String::from(match self {
-            EventAnalyzer::Lifecycle => "lifecycle",
-            EventAnalyzer::Test => "test",
+            EventAnalyzerId::Lifecycle => "lifecycle",
+            EventAnalyzerId::Test => "test",
             _ => "UNKNOWN",
         })
     }
 
-    pub(crate) fn from_int_value(value: i32) -> EventAnalyzer {
+    pub(crate) fn from_int_value(value: i32) -> EventAnalyzerId {
         match value {
-            2 => EventAnalyzer::Lifecycle,
-            1 => EventAnalyzer::Test,
-            _ => EventAnalyzer::Unknown,
+            2 => EventAnalyzerId::Lifecycle,
+            1 => EventAnalyzerId::Test,
+            _ => EventAnalyzerId::Unknown,
         }
     }
 
     pub(crate) fn to_int_value(&self) -> i32 {
         match self {
-            EventAnalyzer::Lifecycle => 2,
-            EventAnalyzer::Test => 1,
+            EventAnalyzerId::Lifecycle => 2,
+            EventAnalyzerId::Test => 1,
             _ => 0,
         }
     }
@@ -136,7 +136,7 @@ pub(crate) async fn insert_task(
 /// Ignore the pre-existing event_id, create a new one.
 pub(crate) async fn insert_event<'a>(
     event: &Event,
-    status: TaskInputState,
+    status: EventQueueState,
     tx: &mut Transaction<'a, Postgres>,
 ) -> Result<u64, sqlx::Error> {
     let row: (i64,) = sqlx::query_as(
@@ -193,7 +193,7 @@ pub(crate) async fn poll<'a>(
         .iter()
         .map(|r| Event {
             event_id: r.event_id,
-            analyzer: EventAnalyzer::from_int_value(r.analyzer),
+            analyzer: EventAnalyzerId::from_int_value(r.analyzer),
             source: MetadataSource::from_int_value(r.source),
             // OPTIMIZE
             json: r.json.clone(),

@@ -2,7 +2,7 @@
 
 use std::fs;
 
-use crate::execution::run::HandlerSpec;
+use crate::execution::model::HandlerSpec;
 
 /// Load tasks from JS files in directory.
 /// Return list of filenames and task specs.

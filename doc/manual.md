@@ -1,6 +1,11 @@
-Your function serves as both a filter and a transformer. If you want to match and transform the input, return an array of responses. If you don't, return an empty list or null. If you don't return anything, the function run will produce an error message.
+Your function serves as both a filter and a transformer. If you want to match
+and transform the input, return an array of responses. If you don't, return an
+empty list or null. If you don't return anything, the function run will produce
+an error message.
 
-Your snippet of JavaScript must have a function named `f`, which takes the event as an argument. You may put other code in the JavaScript if you like, as long as the `f` function is available.
+Your snippet of JavaScript must have a function named `f`, which takes the event
+as an argument. You may put other code in the JavaScript if you like, as long as
+the `f` function is available.
 
 This function always returns greeting messages whatever the input:
 

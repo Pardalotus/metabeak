@@ -1,16 +1,15 @@
 //! Service layer
 //! For running and coordinating functions.
 
-
 use serde_json::Value;
 use sha1::{Digest, Sha1};
 use sqlx::{Error, Pool, Postgres};
 
 use crate::{
-    database::{self, TaskInputState},
+    database::{self, EventQueueState},
     execution::{
         self,
-        run::{Event, HandlerSpec},
+        model::{Event, HandlerSpec},
     },
     local,
 };
@@ -83,9 +82,9 @@ pub(crate) async fn load_events_from_disk(
 ) -> Result<(), sqlx::Error> {
     let mut tx = pool.begin().await?;
 
-    let tasks = local::load_files_from_dir(path)?;
+    let files = local::load_files_from_dir(path)?;
 
-    for (filename, data) in tasks {
+    for (filename, data) in files {
         match serde_json::from_str::<Vec<Value>>(&data) {
             Ok(items) => {
                 for item in items {
@@ -95,7 +94,7 @@ pub(crate) async fn load_events_from_disk(
                         Ok(json) => {
                             if let Some(event) = Event::from_json_value(&json) {
                                 // Normalize
-                                database::insert_event(&event, TaskInputState::New, &mut tx)
+                                database::insert_event(&event, EventQueueState::New, &mut tx)
                                     .await?;
                             } else {
                                 log::error!(

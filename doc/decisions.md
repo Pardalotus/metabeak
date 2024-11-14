@@ -66,12 +66,14 @@ Function can receive new sources without changing
 
 rather than an identifier that can be updated
 
+## 9: PostgreSQL for storage
 
-## 9: Signed integers for ids
+
+## 10: Signed integers for ids
 
 PostgreSQL has only signed ints. No point storing unsigned ones. Less conversion overhead and scope for errors.
 
-## 10: Naming of concepts
+## 11: Naming of concepts
 
 - "Source" is the name for a place data comes from. E.g. 'crossref', 'datacite', 'wikipedia' etc. It's about provenance not ownership. Crossref could assert metadata about a Datacite DOI for example.
 - "Entity" is something with an identifier, e.g. a scholarly work with a DOI.
@@ -82,7 +84,7 @@ PostgreSQL has only signed ints. No point storing unsigned ones. Less conversion
 
 Users only really need to know about Handler and Events.
 
-## 11: Minimal structure of an Event
+## 12: Minimal structure of an Event
 
 JSON with the following fields:
 
@@ -93,7 +95,7 @@ JSON with the following fields:
 
 Each type will have a set of fields.
 
-## DR-0012: Represent Event objects as serde JSON or String
+## DR-0013: Represent Event objects as serde JSON or String
 
 All Events are JSON. On ingestion they must validate as JSON, and some data is
 normalised out. On execution they are straight to the handler, but some
@@ -114,18 +116,18 @@ The following issues highlight the overhead of serde Value:
  - <https://www.reddit.com/r/rust/comments/pa3jtu/poor_performance_and_high_memory_usage/>
  - <https://stackoverflow.com/questions/76454260/rust-serde-get-runtime-heap-size-of-vecserde-jsonvalue>
 
-### DR-0013: Represent whole Event struct in code vs JSON Schema
+### DR-0014: Represent whole Event struct in code vs JSON Schema
 
 Make Event mostly opaque to the code. Although it would more efficient to store it this way it would introduce tech debt. Better to make validation optional and/or mark deprecated parts of the schema than keep old schemas around in the enum definition.
 
-### DR-0014: Expiry window
+### DR-0015: Expiry window
 
 The focus of the API is live data streaming, not historical data.
 
 Some time period will be published for the expiry of data. For example, it may
 be retained for 1 day, 1 week, etc.
 
-### DR-0015: Foreign Key Integrity
+### DR-0016: Foreign Key Integrity
 
 Different entities link together with foreign keys.
 
@@ -139,7 +141,7 @@ public expiry window (DR-0014) but that might violate foreign key integrity.
 All foreign keys should therefore be treated as weak references, not strong
 ones. All code that fetch foreign keys, and data models, should deal with this.
 
-## DR-0016 Tracking execution
+## DR-0017 Tracking execution
 
 Per DR-0007 every Handler runs for every Event.
 
