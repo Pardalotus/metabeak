@@ -4,19 +4,20 @@ This list of features, implemented and TODO, is for keeping track of development
 
 ## Function execution
 
-- Load functions from local disk.
+- Load functions from local disk to database.
 - Catch and report exception executing functions.
 - Catch and report exception loading JS file.
 - Supply global context to all invocations.
-- Supply input to all function invocations.
+- Supply Event input to all function invocations.
 - Store result from function execution.
-- Expose and store console.log, console.error
 - TODO
+  - Expose and store console.log, console.error
   - Heap limit, OOM kill.
   - Execution time limit and kill.
   - Limit on file size.
   - Validate function on load for size.
-- Description and author fields as optional.
+  - Disable broken functions and report
+  - Description and author fields as optional.
 
 ## Events
 
@@ -31,12 +32,17 @@ This list of features, implemented and TODO, is for keeping track of development
    - Expire functions if not used
    - Allow deletion of functions via handle.
    - Expire results
+   - Expire inputs
 
 ## Presentation
 - TODO
   - Formatting function for page of results.
   - List of functions.
   - Output of functions.
+  - Show output as HTML
+  - Show output as Activity Stream
+  - Investigate run, show inputs.
+
 
 ## Sources
 - TODO
@@ -46,6 +52,8 @@ This list of features, implemented and TODO, is for keeping track of development
   - Hacker News
   - Hypothesis
   - Wikipedia
+  - Rogue Scholar
+
 
 ## Sample scripts
 
@@ -58,3 +66,8 @@ This list of features, implemented and TODO, is for keeping track of development
   - Works that cite papers in journal
   - Works that cite works with ROR
   - Works with 'fish' and 'chips' in the abstract
+
+
+## Design questions
+
+what happens when you re-upload a suspended or deleted handler function?

@@ -1,0 +1,6 @@
+[
+  { "source": "crossref", "analyzer": "lifecycle", "type": "test" },
+  { "source": "crossref", "analyzer": "test", "type": "test" },
+  { "source": "test", "analyzer": "lifecycle", "type": "test" },
+  { "source": "test", "analyzer": "test", "type": "test" }
+]
