@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use sqlx::prelude::FromRow;
 
-use crate::database::{EventAnalyzerId, MetadataSource};
+use crate::db::source::{EventAnalyzerId, MetadataSource};
 
 // This is provided by Cargo at build time, so complied as a static string.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
