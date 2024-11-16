@@ -1,39 +1,78 @@
 //! Model and database functions for metadata sources and analyzers.
 
-#[derive(Debug, Copy, Clone)]
-pub(crate) enum MetadataSource {
+/// Source for Metadata Assertions.
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub(crate) enum MetadataSourceId {
     Unknown = 0,
     Test = 1,
     Crossref = 2,
 }
 
-impl MetadataSource {
-    pub(crate) fn from_str_value(value: &str) -> MetadataSource {
+impl MetadataSourceId {
+    pub(crate) fn from_str_value(value: &str) -> MetadataSourceId {
         match value {
-            "crossref" => MetadataSource::Crossref,
-            "test" => MetadataSource::Test,
-            _ => MetadataSource::Unknown,
+            "crossref" => MetadataSourceId::Crossref,
+            "test" => MetadataSourceId::Test,
+            _ => MetadataSourceId::Unknown,
         }
     }
 
-    pub(crate) fn from_int_value(value: i32) -> MetadataSource {
+    pub(crate) fn from_int_value(value: i32) -> MetadataSourceId {
         match value {
-            2 => MetadataSource::Crossref,
-            1 => MetadataSource::Test,
-            _ => MetadataSource::Unknown,
+            2 => MetadataSourceId::Crossref,
+            1 => MetadataSourceId::Test,
+            _ => MetadataSourceId::Unknown,
         }
     }
 
-    pub(crate) fn to_str_value(&self) -> String {
+    pub(crate) fn to_str_value(self) -> String {
         String::from(match self {
-            MetadataSource::Crossref => "crossref",
-            MetadataSource::Test => "test",
+            MetadataSourceId::Crossref => "crossref",
+            MetadataSourceId::Test => "test",
             _ => "UNKNOWN",
         })
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[cfg(test)]
+mod metadata_source_tests {
+    use super::*;
+
+    #[test]
+    fn roundtrip_metadatasource() {
+        let inputs = vec!["crossref", "test"];
+        for input in inputs.iter() {
+            let from_str = MetadataSourceId::from_str_value(input);
+            let as_str = from_str.to_str_value();
+            let as_number = from_str as i32;
+            let from_number = MetadataSourceId::from_int_value(as_number);
+
+            assert_eq!(from_str, from_number);
+            assert_eq!(&as_str, input);
+        }
+    }
+
+    /// To cope with foreign keys shifting, or weird inputs, represent unknown values rather than fail.
+    #[test]
+    fn always_returns() {
+        let result_str = MetadataSourceId::from_str_value("BLEURGH");
+        assert_eq!(
+            result_str,
+            MetadataSourceId::Unknown,
+            "Unknown string values return an 'unknown' value."
+        );
+
+        let result_num = MetadataSourceId::from_int_value(9999);
+        assert_eq!(
+            result_num,
+            MetadataSourceId::Unknown,
+            "Unknown string values return an 'unknown' value."
+        );
+    }
+}
+
+/// ID of an Event Analyzer, which is a function that produces events.
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub(crate) enum EventAnalyzerId {
     Unknown = 0,
     Test = 1,
@@ -51,7 +90,7 @@ impl EventAnalyzerId {
         }
     }
 
-    pub(crate) fn to_str_value(&self) -> String {
+    pub(crate) fn to_str_value(self) -> String {
         String::from(match self {
             EventAnalyzerId::Lifecycle => "lifecycle",
             EventAnalyzerId::Test => "test",
@@ -67,5 +106,42 @@ impl EventAnalyzerId {
             3 => EventAnalyzerId::Citation,
             _ => EventAnalyzerId::Unknown,
         }
+    }
+}
+
+#[cfg(test)]
+mod event_analyzer_id_tests {
+    use super::*;
+
+    #[test]
+    fn roundtrip_event_analyzer_id() {
+        let inputs = vec!["lifecycle", "test", "citation", "UNKNOWN"];
+        for input in inputs.iter() {
+            let from_str = EventAnalyzerId::from_str_value(input);
+            let as_str = from_str.to_str_value();
+            let as_number = from_str as i32;
+            let from_number = EventAnalyzerId::from_int_value(as_number);
+
+            assert_eq!(from_str, from_number);
+            assert_eq!(&as_str, input);
+        }
+    }
+
+    /// To cope with foreign keys shifting, or weird inputs, represent unknown values rather than fail.
+    #[test]
+    fn always_returns() {
+        let result_str = EventAnalyzerId::from_str_value("BLEURGH");
+        assert_eq!(
+            result_str,
+            EventAnalyzerId::Unknown,
+            "Unknown string values return an 'unknown' value."
+        );
+
+        let result_num = EventAnalyzerId::from_int_value(9999);
+        assert_eq!(
+            result_num,
+            EventAnalyzerId::Unknown,
+            "Unknown string values return an 'unknown' value."
+        );
     }
 }

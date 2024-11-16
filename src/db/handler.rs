@@ -10,6 +10,8 @@ pub(crate) enum HandlerState {
     Enabled = 1,
 }
 
+/// Insert a handler function, returning its ID, if it was newly created.
+/// If it already existed (based on its content hash) then return [sqlx::Error::RowNotFound].
 pub(crate) async fn insert_handler(
     task: &HandlerSpec,
     hash: &str,
@@ -36,7 +38,7 @@ pub(crate) async fn insert_handler(
 
 /// Retrieve all Handler functions that are enabled.
 /// Assumes that there is a small enough number that they will fit in heap.
-pub(crate) async fn all_enabled_handlers<'a>(
+pub(crate) async fn get_all_enabled_handlers<'a>(
     tx: &mut Transaction<'a, Postgres>,
 ) -> Result<Vec<HandlerSpec>, sqlx::Error> {
     let rows: Vec<HandlerSpec> = sqlx::query_as(
@@ -50,6 +52,7 @@ pub(crate) async fn all_enabled_handlers<'a>(
     Ok(rows)
 }
 
+/// Save a set of [RunResult]s.
 pub(crate) async fn save_results<'a>(
     results: &[RunResult],
     tx: &mut Transaction<'a, Postgres>,

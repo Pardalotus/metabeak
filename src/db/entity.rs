@@ -13,6 +13,8 @@ pub(crate) async fn resolve_identifier(
 ) -> Result<i64, sqlx::Error> {
     let (identifier_str, identifier_type) = identifier.to_id_string_pair();
 
+    // Assume that most identifiers won't have been seen before. So start with
+    // the INSERT ... IGNORE and query later on if it did already exist.
     let row: Option<(i64,)> = sqlx::query_as(
         "INSERT INTO entity
          (identifier_type, identifier)
@@ -30,6 +32,7 @@ pub(crate) async fn resolve_identifier(
         return Ok(entity_id);
     }
 
+    // If it did already exist, the INSERT ... IGNORE will have done nothing.
     let row: (i64,) = sqlx::query_as(
         "SELECT entity_id FROM entity
                  WHERE identifier_type = $1 AND identifier = $2;",

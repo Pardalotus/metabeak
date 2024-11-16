@@ -4,7 +4,7 @@ use scholarly_identifiers::identifiers::Identifier;
 use serde::{Deserialize, Serialize};
 use sqlx::prelude::FromRow;
 
-use crate::db::source::{EventAnalyzerId, MetadataSource};
+use crate::db::source::{EventAnalyzerId, MetadataSourceId};
 
 // This is provided by Cargo at build time, so complied as a static string.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -48,7 +48,7 @@ pub(crate) struct Event {
 
     pub(crate) analyzer: EventAnalyzerId,
 
-    pub(crate) source: MetadataSource,
+    pub(crate) source: MetadataSourceId,
 
     // If there's a subject_id field, it's represented here.
     pub(crate) subject_id: Option<Identifier>,
@@ -56,16 +56,12 @@ pub(crate) struct Event {
     // If there's an object_id field, it's represented here.
     pub(crate) object_id: Option<Identifier>,
 
-    // Remainder of the JSON structure once the following fields has been removed:
-    //  - event_id
-    //  - analyzer
-    //  - source
-    //  - subject_id
-    //  - object_id
+    // Remainder of the JSON structure once the hydrated fields have been removed.
     // See DR-0012.
     pub(crate) json: String,
 }
 
+/// Map an Identifier Type to the value passed to the Handler.
 fn identifier_type_string(identifier: &Identifier) -> serde_json::Value {
     serde_json::Value::String(String::from(match identifier {
         Identifier::Doi {
@@ -78,6 +74,16 @@ fn identifier_type_string(identifier: &Identifier) -> serde_json::Value {
         Identifier::String(_) => "string",
         Identifier::Isbn(_) => "isbn",
     }))
+}
+
+/// Is this field meant to be hydrated, and therefore not stored in the database JSON.
+fn is_hydrated_field(field: &str) -> bool {
+    field.eq("analyzer")
+        || field.eq("source")
+        || field.eq("subject_id")
+        || field.eq("subject_id_type")
+        || field.eq("object_id")
+        || field.eq("object_id_type")
 }
 
 impl Event {
@@ -162,7 +168,7 @@ impl Event {
                     let analyzer_str = data_obj.get("analyzer")?.as_str().unwrap_or("UNKNOWN");
                     let source_str = data_obj.get("source")?.as_str().unwrap_or("UNKNOWN");
                     let analyzer = EventAnalyzerId::from_str_value(analyzer_str);
-                    let source = MetadataSource::from_str_value(source_str);
+                    let source = MetadataSourceId::from_str_value(source_str);
 
                     // Defaults to -1 (i.e. unassigned), so we can load events for insertion into the database.
                     // Events may be submitted without IDs, and
@@ -186,13 +192,7 @@ impl Event {
 
                     let mut normalized_event = serde_json::Map::new();
                     for field in data_obj.keys() {
-                        if !(field.eq("analyzer")
-                            || field.eq("source")
-                            || field.eq("subject_id")
-                            || field.eq("subject_id_type")
-                            || field.eq("object_id")
-                            || field.eq("object_id_type"))
-                        {
+                        if is_hydrated_field(&field) {
                             if let Some(obj) = data_obj.get(field) {
                                 normalized_event.insert(field.clone(), obj.clone());
                             }
@@ -230,7 +230,7 @@ impl Event {
 
 /// Result from a handler function run.
 /// A handler function returns an array of results. There will be one of these objects per entry.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub(crate) struct RunResult {
     /// ID of the handler function used.
     pub(crate) handler_id: i64,

@@ -95,13 +95,13 @@ pub(crate) async fn load_events_from_disk(
                             if let Some(event) = Event::from_json_value(&json) {
                                 // Subject and Object are optional.
                                 let subject_entity_id = if let Some(ref id) = event.subject_id {
-                                    Some(db::entity::resolve_identifier(&id, pool).await?)
+                                    Some(db::entity::resolve_identifier(id, pool).await?)
                                 } else {
                                     None
                                 };
 
                                 let object_entity_id = if let Some(ref id) = event.object_id {
-                                    Some(db::entity::resolve_identifier(&id, pool).await?)
+                                    Some(db::entity::resolve_identifier(id, pool).await?)
                                 } else {
                                     None
                                 };
@@ -181,7 +181,7 @@ pub(crate) async fn try_pump(pool: &Pool<Postgres>) -> Result<PumpResult, Error>
     // Get all handlers. Do so from inside the transaction so there's a
     // consistent view of the handlers table. If it becomes necessary to chunk
     // into batches of handlers in future, this will be important.
-    let handlers: Vec<HandlerSpec> = db::handler::all_enabled_handlers(&mut tx).await?;
+    let handlers: Vec<HandlerSpec> = db::handler::get_all_enabled_handlers(&mut tx).await?;
 
     let start_execution = std::time::Instant::now();
     let results = execution::run::run_all(&handlers, &inputs);
