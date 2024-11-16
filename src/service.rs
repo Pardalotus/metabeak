@@ -93,9 +93,28 @@ pub(crate) async fn load_events_from_disk(
                     match serde_json::to_string(&item) {
                         Ok(json) => {
                             if let Some(event) = Event::from_json_value(&json) {
+                                // Subject and Object are optional.
+                                let subject_entity_id = if let Some(ref id) = event.subject_id {
+                                    Some(db::entity::resolve_identifier(&id, pool).await?)
+                                } else {
+                                    None
+                                };
+
+                                let object_entity_id = if let Some(ref id) = event.object_id {
+                                    Some(db::entity::resolve_identifier(&id, pool).await?)
+                                } else {
+                                    None
+                                };
+
                                 // Normalize
-                                db::event::insert_event(&event, EventQueueState::New, &mut tx)
-                                    .await?;
+                                db::event::insert_event(
+                                    &event,
+                                    subject_entity_id,
+                                    object_entity_id,
+                                    EventQueueState::New,
+                                    &mut tx,
+                                )
+                                .await?;
                             } else {
                                 log::error!(
                                     "Didn't insert event from file: {}. Input: {}",

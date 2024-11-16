@@ -31,14 +31,6 @@ impl MetadataSource {
             _ => "UNKNOWN",
         })
     }
-
-    pub(crate) fn to_int_value(&self) -> i32 {
-        match self {
-            MetadataSource::Crossref => 2,
-            MetadataSource::Test => 1,
-            _ => 0,
-        }
-    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -46,6 +38,7 @@ pub(crate) enum EventAnalyzerId {
     Unknown = 0,
     Test = 1,
     Lifecycle = 2,
+    Citation = 3,
 }
 
 impl EventAnalyzerId {
@@ -53,6 +46,7 @@ impl EventAnalyzerId {
         match value {
             "lifecycle" => EventAnalyzerId::Lifecycle,
             "test" => EventAnalyzerId::Test,
+            "citation" => EventAnalyzerId::Citation,
             _ => EventAnalyzerId::Unknown,
         }
     }
@@ -61,6 +55,7 @@ impl EventAnalyzerId {
         String::from(match self {
             EventAnalyzerId::Lifecycle => "lifecycle",
             EventAnalyzerId::Test => "test",
+            EventAnalyzerId::Citation => "citation",
             _ => "UNKNOWN",
         })
     }
@@ -69,15 +64,8 @@ impl EventAnalyzerId {
         match value {
             2 => EventAnalyzerId::Lifecycle,
             1 => EventAnalyzerId::Test,
+            3 => EventAnalyzerId::Citation,
             _ => EventAnalyzerId::Unknown,
-        }
-    }
-
-    pub(crate) fn to_int_value(self) -> i32 {
-        match self {
-            EventAnalyzerId::Lifecycle => 2,
-            EventAnalyzerId::Test => 1,
-            _ => 0,
         }
     }
 }

@@ -62,9 +62,9 @@ fn report_result_success(
     } else {
         report_error(
             handler_spec,
-event_id,
+            event_id,
              results,
-            String::from("Failed to parse result from function. Did you return objects that can't be represented in JSON?"),
+            String::from("Failed to parse result from function. Check that you returned an array of results that can be represented in JSON."),
         );
     }
 }
@@ -100,7 +100,7 @@ fn get_f_function<'s>(
     if let Some(query_function) = task_proxy.get(task_scope, function_key.into()) {
         if !query_function.is_function() {
             report_error(            handler_spec,
--1,
+                -1,
                 results,
                 String::from(
                     "'f' was not a function. Check you have don't have a conflicting variable named `f`.",
@@ -204,17 +204,26 @@ fn set_variable_from_json(
 
 /// Run all tasks against all inputs.
 /// Create an isolated environment for each distinct user.
-pub(crate) fn run_all(handlers: &[HandlerSpec], inputs: &[Event]) -> Vec<RunResult> {
+pub(crate) fn run_all(handlers: &[HandlerSpec], events: &[Event]) -> Vec<RunResult> {
     log::info!(
         "Run {} tasks against {} inputs",
         handlers.len(),
-        inputs.len()
+        events.len()
     );
 
     let mut results: Vec<RunResult> = vec![];
 
     // Representation of the global 'environment' variable provided to all function invocations.
     let environment_json = Global::build().json();
+
+    // Build the full JSON for each, including hydrating identifiers etc.
+    let hydrated_events: Vec<(&Event, String)> = events
+        .iter()
+        .filter_map(|event| match event.to_json_value() {
+            Some(json) => Some((event, json)),
+            None => None,
+        })
+        .collect();
 
     // Isolated environment for each task, re-used for all input data.
     for handler_spec in handlers.iter() {
@@ -243,8 +252,8 @@ pub(crate) fn run_all(handlers: &[HandlerSpec], inputs: &[Event]) -> Vec<RunResu
                 get_f_function(handler_spec, &mut results, task_scope, task_proxy)
             {
                 // Execute f for each input.
-                for input in inputs {
-                    let input_handle = marshal_task_input(task_scope, &input.json);
+                for (event, json) in hydrated_events.iter() {
+                    let input_handle = marshal_task_input(task_scope, &json);
 
                     // Run in a TryCatch so we can retrieve error messages.
                     let mut try_catch_scope = v8::TryCatch::new(task_scope);
@@ -258,14 +267,14 @@ pub(crate) fn run_all(handlers: &[HandlerSpec], inputs: &[Event]) -> Vec<RunResu
                                 let message = ex.to_rust_string_lossy(&mut try_catch_scope);
                                 report_error(
                                     handler_spec,
-                                    input.event_id,
+                                    event.event_id,
                                     &mut results,
                                     format!("Failed to run the function. Exception: {}", message),
                                 );
                             } else {
                                 report_error(
                                     handler_spec,
-                                    input.event_id,
+                                    event.event_id,
                                     &mut results,
                                     String::from(
                                         "Failed to run the function, no exception available.",
@@ -279,7 +288,7 @@ pub(crate) fn run_all(handlers: &[HandlerSpec], inputs: &[Event]) -> Vec<RunResu
                             // individual Result objects.
                             report_result_success(
                                 handler_spec,
-                                input.event_id,
+                                event.event_id,
                                 &mut results,
                                 result,
                                 &mut try_catch_scope,

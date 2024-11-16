@@ -3,10 +3,11 @@
 use crate::execution::model::{HandlerSpec, RunResult};
 use sqlx::{Pool, Postgres, Transaction};
 
+/// State of a handler function.
+/// Currently they are always enabled.
 #[derive(Debug, Copy, Clone)]
 pub(crate) enum HandlerState {
     Enabled = 1,
-    Disabled = 2,
 }
 
 pub(crate) async fn insert_handler(
