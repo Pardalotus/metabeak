@@ -118,7 +118,10 @@ The following issues highlight the overhead of serde Value:
 
 ### DR-0014: Represent whole Event struct in code vs JSON Schema
 
-Make Event mostly opaque to the code. Although it would more efficient to store it this way it would introduce tech debt. Better to make validation optional and/or mark deprecated parts of the schema than keep old schemas around in the enum definition.
+Make Event mostly opaque to the code. Although it would more efficient to store
+it this way it would introduce tech debt. Better to make validation optional
+and/or mark deprecated parts of the schema than keep old schemas around in the
+enum definition.
 
 ### DR-0015: Expiry window
 
@@ -161,12 +164,35 @@ of JSON. Setting a flag on this would lead to bloat from dead tuples. The
 
 DRAFT
 
-Data flows from metadata source (e.g. Crossref) through to the input Events given to Handlers and the metadata assertions that they access.
+Data flows from metadata source (e.g. Crossref) through to the input Events
+given to Handlers and the metadata assertions that they access.
 
-Rather than build a universal pipeline that handles concurrency etc, instead make it the responsibility of Agents to run everything needed. E.g. Crossref agent will:
+Rather than build a universal pipeline that handles concurrency etc, instead
+make it the responsibility of Agents to run everything needed. E.g. Crossref
+agent will:
 
 1. Poll Crossref for recent metadata assertions. Do its own bookkeeping.
 2. Make metadata assertions with Crossref as the source.
 3. Populate a queue for processing new metadata assertions into Events.
 4. Listen on metadata assertion queue. Extract events.
-5.
+5. Retrieve and save metadata assertions for connected Entities.
+
+### Options:
+
+1. Synchronous processor
+2. Asynchronous processor with queues and distributed join.
+
+## DR-0018 Representation of identifiers in the Event JSON
+
+Identifiers in an event. Some identifiers are naturally expressed as URIs, some
+are not. In some cases the identifier has a natural URL / URI representation
+(e.g. ROR, ORCID) and in some cases not (ISBN). In some cases the URL
+representation is harder to work with (e.g. DOI, which must be encoded).
+
+So, provide both the raw ID and the URI form, and an ID type field.
+
+{
+  "subject_id_uri": "https://doi.org/10.5555/12345678",
+  "subject_id": "10.5555/12345678",
+  "subject_id_type": "doi"
+}

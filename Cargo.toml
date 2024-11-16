@@ -14,6 +14,7 @@ itertools = "0.13.0"
 log = "0.4.22"
 logger = "0.4.0"
 retry = "2.0.0"
+scholarly_identifiers = "0.2.0"
 serde = { version = "1.0.214", features = ["derive"] }
 serde_json = "1.0.132"
 sha1 = "0.10.6"

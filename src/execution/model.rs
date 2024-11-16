@@ -1,5 +1,6 @@
 //! Model for representing Handlers, and data going into and out of them.
 
+use scholarly_identifiers::identifiers::Identifier;
 use serde::{Deserialize, Serialize};
 use sqlx::prelude::FromRow;
 
@@ -49,13 +50,38 @@ pub(crate) struct Event {
 
     pub(crate) source: MetadataSource,
 
-    // Remainder of the JSON structure.
+    // If there's a subject_id field, it's represented here.
+    pub(crate) subject_id: Option<Identifier>,
+
+    // If there's an object_id field, it's represented here.
+    pub(crate) object_id: Option<Identifier>,
+
+    // Remainder of the JSON structure once the following fields has been removed:
+    //  - event_id
+    //  - analyzer
+    //  - source
+    //  - subject_id
+    //  - object_id
     // See DR-0012.
     pub(crate) json: String,
 }
 
+fn identifier_type_string(identifier: &Identifier) -> serde_json::Value {
+    serde_json::Value::String(String::from(match identifier {
+        Identifier::Doi {
+            prefix: _,
+            suffix: _,
+        } => "doi",
+        Identifier::Orcid(_) => "orcid",
+        Identifier::Ror(_) => "ror",
+        Identifier::Uri(_) => "uri",
+        Identifier::String(_) => "string",
+        Identifier::Isbn(_) => "isbn",
+    }))
+}
+
 impl Event {
-    // Serialize to a public JSON representation, with all fields present.
+    /// Serialize to a public JSON representation, hydrating some fields from database values.
     pub(crate) fn to_json_value(&self) -> Option<String> {
         let analyzer_value = serde_json::Value::String(self.analyzer.to_str_value());
         let source_value = serde_json::Value::String(self.source.to_str_value());
@@ -63,8 +89,44 @@ impl Event {
         match serde_json::from_str::<serde_json::Value>(&self.json) {
             Ok(data) => match data {
                 serde_json::Value::Object(mut data_obj) => {
-                    data_obj["analyzer"] = analyzer_value;
-                    data_obj["source"] = source_value;
+                    data_obj.insert(String::from("analyzer"), analyzer_value);
+                    data_obj.insert(String::from("source"), source_value);
+
+                    if let Some(ref identifier) = self.subject_id {
+                        data_obj.insert(
+                            String::from("subject_id"),
+                            serde_json::Value::String(identifier.to_stable_string()),
+                        );
+                        data_obj.insert(
+                            String::from("subject_id_type"),
+                            identifier_type_string(identifier),
+                        );
+
+                        if let Some(uri) = identifier.to_uri() {
+                            data_obj.insert(
+                                String::from("subject_id_uri"),
+                                serde_json::Value::String(uri),
+                            );
+                        }
+                    }
+
+                    if let Some(ref identifier) = self.object_id {
+                        data_obj.insert(
+                            String::from("object_id"),
+                            serde_json::Value::String(identifier.to_stable_string()),
+                        );
+                        data_obj.insert(
+                            String::from("object_id_type"),
+                            identifier_type_string(identifier),
+                        );
+
+                        if let Some(uri) = identifier.to_uri() {
+                            data_obj.insert(
+                                String::from("object_id_uri"),
+                                serde_json::Value::String(uri),
+                            );
+                        }
+                    }
 
                     if let Ok(json) = serde_json::to_string(&serde_json::Value::Object(data_obj)) {
                         Some(json)
@@ -110,9 +172,27 @@ impl Event {
                         None => -1,
                     };
 
+                    let subject_id = if let Some(val) = data_obj.get("subject_id") {
+                        val.as_str().map(|id_str| Identifier::parse(id_str))
+                    } else {
+                        None
+                    };
+
+                    let object_id = if let Some(val) = data_obj.get("object_id") {
+                        val.as_str().map(|id_str| Identifier::parse(id_str))
+                    } else {
+                        None
+                    };
+
                     let mut normalized_event = serde_json::Map::new();
                     for field in data_obj.keys() {
-                        if !(field.eq("analyzer") || field.eq("source")) {
+                        if !(field.eq("analyzer")
+                            || field.eq("source")
+                            || field.eq("subject_id")
+                            || field.eq("subject_id_type")
+                            || field.eq("object_id")
+                            || field.eq("object_id_type"))
+                        {
                             if let Some(obj) = data_obj.get(field) {
                                 normalized_event.insert(field.clone(), obj.clone());
                             }
@@ -125,6 +205,8 @@ impl Event {
                             event_id,
                             analyzer,
                             source,
+                            subject_id,
+                            object_id,
                             json,
                         })
                     } else {
