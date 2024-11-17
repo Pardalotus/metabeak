@@ -56,7 +56,12 @@ This list of features, implemented and TODO, is for keeping track of development
 
 
 ## Sample scripts
-
+ - Debugging
+  - `echo.js` - Echo input, for debugging.
+  - `hello.js` - Simple return the same value.
+  - `nothing.js` - Simple return no value.
+  - `stackoverflow.js` - Demo of stack overflow handling.
+  - `counter.js` - Demo of using variables between executions.
 - TODO
   - New DOIs
   - Cited DOIs
@@ -66,8 +71,12 @@ This list of features, implemented and TODO, is for keeping track of development
   - Works that cite papers in journal
   - Works that cite works with ROR
   - Works with 'fish' and 'chips' in the abstract
+  - Palindromic or other
+
+  <<<<<<< Updated upstream
 
 
 ## Design questions
 
 what happens when you re-upload a suspended or deleted handler function?
+=======

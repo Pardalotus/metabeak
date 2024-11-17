@@ -1,6 +1,9 @@
 [
-  { "source": "crossref", "analyzer": "lifecycle", "type": "test" },
-  { "source": "crossref", "analyzer": "test", "type": "test" },
-  { "source": "test", "analyzer": "lifecycle", "type": "test" },
-  { "source": "test", "analyzer": "test", "type": "test" }
+  {
+    "source": "test",
+    "analyzer": "citation",
+    "type": "cites",
+    "subject_id": "https://doi.org/10.5555/12345678",
+    "object_id": "https://doi.org/10.5555/24242424"
+  }
 ]

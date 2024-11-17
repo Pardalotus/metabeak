@@ -15,14 +15,23 @@ function f(args) {
 }
 ```
 
-You can use:
- - plain JavaScript features
+## Limitations
+
+### Timeout
+Your handler must load within 10ms and the function must execute within 1ms. You
+will get timeout errors if these are exceeded. If you write standard JavaScript
+you won't trip this limit. It's designed to catch bugs such as infinite loops and stack overflows.
+
+If a handler triggers a timeout during execution, some Events may be dropped.
+
+### Features
+
+You can use plain JavaScript features. See the examples.
 
 You can't use:
+
  - setTimeout
  - network
-
-
 
 # License
 
