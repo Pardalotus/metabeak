@@ -19,7 +19,7 @@ use super::model::{Event, HandlerSpec, RunResult};
 static V8_INITIALIZED: Once = Once::new();
 
 // Maximum time a JS execution can take.
-static EXECUTION_TIMEOUT: Duration = Duration::from_millis(1);
+static EXECUTION_TIMEOUT: Duration = Duration::from_millis(10);
 
 // Maximum time a JS load can take. This takes a while as the environment is set up.
 static LOAD_TIMEOUT: Duration = Duration::from_millis(10);
@@ -265,7 +265,11 @@ pub(crate) fn run_all(handlers: &[HandlerSpec], events: &[Event]) -> Vec<RunResu
                     RecvTimeoutError::Disconnected => done = true,
                     RecvTimeoutError::Timeout => {
                         if let Some(isolate) = current_isolate {
-                            log::info!("Terminate handler {}", current_handler_id);
+                            log::info!(
+                                "Terminate handler id {} exceeded {:?}",
+                                current_handler_id,
+                                current_duration
+                            );
                             watchdog_send_terminated.send(current_handler_id).unwrap();
                             isolate.terminate_execution();
                             current_isolate = None;
@@ -290,7 +294,7 @@ pub(crate) fn run_all(handlers: &[HandlerSpec], events: &[Event]) -> Vec<RunResu
 
     // Isolated environment for each task, re-used for all input data.
     for handler_spec in handlers.iter() {
-        log::info!("Running task id {}", handler_spec.handler_id);
+        log::debug!("Running task id {}", handler_spec.handler_id);
 
         let isolate = &mut v8::Isolate::new(Default::default());
 

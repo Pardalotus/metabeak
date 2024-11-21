@@ -25,7 +25,7 @@ pub(crate) async fn insert_event<'a>(
 ) -> Result<u64, sqlx::Error> {
     let row: (i64,) = sqlx::query_as(
         "INSERT INTO event
-         (json, status, source, analyzer, subject_entity_id, object_entity_id)
+         (json, status, source_id, analyzer_id, subject_entity_id, object_entity_id)
         VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING event_id;",
     )
@@ -45,8 +45,8 @@ pub(crate) async fn insert_event<'a>(
 #[derive(FromRow, Debug)]
 pub(crate) struct EventQueueEntry {
     pub(crate) event_id: i64,
-    pub(crate) analyzer: i32,
-    pub(crate) source: i32,
+    pub(crate) analyzer_id: i32,
+    pub(crate) source_id: i32,
     pub(crate) json: String,
     pub(crate) subject_id_type: Option<i32>,
     pub(crate) subject_id_value: Option<String>,
@@ -58,8 +58,8 @@ impl EventQueueEntry {
     fn to_event(self) -> Event {
         Event {
             event_id: self.event_id,
-            analyzer: EventAnalyzerId::from_int_value(self.analyzer),
-            source: MetadataSourceId::from_int_value(self.source),
+            analyzer: EventAnalyzerId::from_int_value(self.analyzer_id),
+            source: MetadataSourceId::from_int_value(self.source_id),
 
             // Subject and Object are optional fields, but type and value occur together.
             subject_id: if let (Some(id_type), Some(id_val)) =
@@ -90,28 +90,34 @@ pub(crate) async fn poll<'a>(
 ) -> Result<Vec<Event>, sqlx::Error> {
     let rows: Vec<EventQueueEntry> = sqlx::query_as(
         "WITH
+            entries AS (
+                SELECT
+                    event_queue.event_queue_id as event_queue_id,
+                    event_queue.event_id as event_id
+                FROM event_queue
+                ORDER BY event_queue.event_queue_id ASC
+                FOR UPDATE SKIP LOCKED
+                LIMIT $1
+            ),
             events AS (
                 SELECT
-                    event_queue.execution_id as execution_id,
                     event.event_id as event_id,
-                    event.analyzer as analyzer,
-                    event.source as source,
+                    event.analyzer_id as analyzer_id,
+                    event.source_id as source_id,
                     subject.identifier_type as subject_id_type,
                     subject.identifier as subject_id_value,
                     object.identifier_type as object_id_type,
                     object.identifier as object_id_value,
                     event.json as json
-                FROM event_queue
-                JOIN event
-                ON event_queue.event_id = event.event_id
-                JOIN entity AS subject ON subject.entity_id = event.subject_entity_id
-                JOIN entity AS object ON object.entity_id = event.object_entity_id
-                FOR UPDATE SKIP LOCKED
-                LIMIT $1),
-            ids AS (SELECT execution_id FROM events),
+                FROM
+                    entries
+                    INNER JOIN event ON entries.event_id = event.event_id
+                    LEFT JOIN entity AS subject ON subject.entity_id = event.subject_entity_id
+                    LEFT JOIN entity AS object ON object.entity_id = event.object_entity_id
+            ),
             deleted AS (
                 DELETE FROM event_queue
-                WHERE execution_id IN (SELECT execution_id FROM ids))
+                WHERE event_queue_id IN (SELECT event_queue_id FROM entries))
         SELECT * from events;",
     )
     .bind(limit)
@@ -129,8 +135,8 @@ mod tests {
     fn subj_obj_present() {
         let result = EventQueueEntry {
             event_id: 1,
-            analyzer: 2,
-            source: 1,
+            analyzer_id: 2,
+            source_id: 1,
             json: String::from("{\"hello\": \"world\", \"foo\": \"bar\"}"),
             subject_id_type: Some(1), // Type of DOI from `scholarly_identifiers` crate.
             subject_id_value: Some(String::from("10.5555/12345678")),
@@ -173,8 +179,8 @@ mod tests {
     fn subj_obj_absent() {
         let result = EventQueueEntry {
             event_id: 1,
-            analyzer: 2,
-            source: 1,
+            analyzer_id: 2,
+            source_id: 1,
             json: String::from("{\"hello\": \"world\", \"foo\": \"bar\"}"),
             subject_id_type: None,
             subject_id_value: None,
@@ -214,8 +220,8 @@ mod tests {
     fn subj_obj_partial() {
         let result = EventQueueEntry {
             event_id: 1,
-            analyzer: 2,
-            source: 1,
+            analyzer_id: 2,
+            source_id: 1,
             json: String::from("{\"hello\": \"world\", \"foo\": \"bar\"}"),
             subject_id_type: None,
             subject_id_value: Some(String::from("10.5555/12345678")),
@@ -236,8 +242,8 @@ mod tests {
 
         let result = EventQueueEntry {
             event_id: 1,
-            analyzer: 2,
-            source: 1,
+            analyzer_id: 2,
+            source_id: 1,
             json: String::from("{\"hello\": \"world\", \"foo\": \"bar\"}"),
             subject_id_type: Some(1),
             subject_id_value: None,
