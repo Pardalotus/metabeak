@@ -46,6 +46,7 @@ pub(crate) struct MetadataQueueEntry {
     pub(crate) json: String,
     pub(crate) subject_id_type: i32,
     pub(crate) subject_id_value: String,
+    pub(crate) assertion_id: i64,
 }
 
 impl MetadataQueueEntry {
@@ -70,6 +71,7 @@ pub(crate) async fn poll_assertions<'a>(
                     metadata_assertion_queue.queue_id as queue_id,
                     metadata_assertion.source_id as source_id,
                     metadata_assertion.json as json,
+                    metadata_assertion.assertion_id as assertion_id,
                     subject.identifier_type as subject_id_type,
                     subject.identifier as subject_id_value
                 FROM metadata_assertion_queue

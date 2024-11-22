@@ -25,6 +25,7 @@ CREATE TABLE event (
     status INTEGER NOT NULL,
     source_id INTEGER NOT NULL,
     analyzer_id INTEGER NOT NULL,
+    assertion_id BIGINT NOT NULL,
     subject_entity_id BIGINT NULL REFERENCES entity(entity_id),
     object_entity_id BIGINT NULL REFERENCES entity(entity_id),
     created TIMESTAMPTZ NOT NULL DEFAULT NOW());

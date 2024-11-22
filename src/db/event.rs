@@ -25,8 +25,8 @@ pub(crate) async fn insert_event<'a>(
 ) -> Result<u64, sqlx::Error> {
     let row: (i64,) = sqlx::query_as(
         "INSERT INTO event
-         (json, status, source_id, analyzer_id, subject_entity_id, object_entity_id)
-        VALUES ($1, $2, $3, $4, $5, $6)
+         (json, status, source_id, analyzer_id, subject_entity_id, object_entity_id, assertion_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING event_id;",
     )
     .bind(&event.json)
@@ -35,6 +35,7 @@ pub(crate) async fn insert_event<'a>(
     .bind(event.analyzer as i32)
     .bind(subject_entity_id)
     .bind(object_entity_id)
+    .bind(event.assertion_id)
     .fetch_one(&mut **tx)
     .await?;
 
@@ -52,6 +53,7 @@ pub(crate) struct EventQueueEntry {
     pub(crate) subject_id_value: Option<String>,
     pub(crate) object_id_type: Option<i32>,
     pub(crate) object_id_value: Option<String>,
+    pub(crate) assertion_id: i64,
 }
 
 impl EventQueueEntry {
@@ -60,7 +62,7 @@ impl EventQueueEntry {
             event_id: self.event_id,
             analyzer: EventAnalyzerId::from_int_value(self.analyzer_id),
             source: MetadataSourceId::from_int_value(self.source_id),
-
+            assertion_id: self.assertion_id,
             // Subject and Object are optional fields, but type and value occur together.
             subject_id: if let (Some(id_type), Some(id_val)) =
                 (self.subject_id_type, &self.subject_id_value)
@@ -104,6 +106,7 @@ pub(crate) async fn poll<'a>(
                     event.event_id as event_id,
                     event.analyzer_id as analyzer_id,
                     event.source_id as source_id,
+                    event.assertion_id as assertion_id,
                     subject.identifier_type as subject_id_type,
                     subject.identifier as subject_id_value,
                     object.identifier_type as object_id_type,

@@ -12,6 +12,7 @@ pub(crate) fn extract_events(assertion: &MetadataQueueEntry) -> Vec<Event> {
             subject_id: Some(assertion.subject_id()),
             object_id: None,
             source: MetadataSourceId::from_int_value(assertion.source_id),
+            assertion_id: assertion.assertion_id,
             json: serde_json::json!({"type": "indexed", "bytes": assertion.json.len()}).to_string(),
         });
     }
