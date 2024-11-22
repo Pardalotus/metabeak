@@ -2,7 +2,6 @@
 //! For running and coordinating functions.
 
 use serde_json::Value;
-use sha1::{Digest, Sha1};
 use sqlx::{Error, Pool, Postgres};
 
 use crate::{
@@ -12,7 +11,10 @@ use crate::{
         model::{Event, HandlerSpec},
     },
     local,
+    util::hash_data,
 };
+
+const EXECUTE_BATCH_SIZE: i32 = 100;
 
 /// Load functions from specified directory.
 /// These are configured at boot, not directly by a user, so the result is logged.
@@ -34,19 +36,6 @@ pub(crate) async fn load_handler_functions_from_disk(
     }
 }
 
-/// Hash for task for uniqueness in the database.
-/// Currently based only on the code.
-fn task_hash(task: &HandlerSpec) -> String {
-    let mut hasher = Sha1::new();
-    hasher.update(&task.code);
-    hasher
-        .finalize()
-        .iter()
-        .map(|b| format!("{:02x}", b))
-        .collect::<Vec<_>>()
-        .join("")
-}
-
 enum TaskLoadResult {
     New { task_id: u64 },
     Exists,
@@ -55,7 +44,7 @@ enum TaskLoadResult {
 
 /// Load a function. On creation return New ID, or report that it already exists.
 async fn load_handler(pool: &Pool<Postgres>, task: &HandlerSpec) -> TaskLoadResult {
-    let hash = task_hash(task);
+    let hash = hash_data(&task.code);
 
     log::info!("Load function {}", hash);
 
@@ -142,7 +131,7 @@ pub(crate) async fn load_events_from_disk(
 
 #[derive(Debug)]
 pub(crate) struct PumpResult {
-    inputs_processed: u32,
+    events_processed: u32,
     poll_duration: u128,
     execute_duration: u128,
     save_duration: u128,
@@ -151,32 +140,43 @@ pub(crate) struct PumpResult {
     handlers: usize,
 }
 
-pub(crate) async fn pump(pool: &Pool<Postgres>) {
-    match try_pump(pool).await {
-        Ok(result) => log::info!(
+pub(crate) async fn drain(pool: &Pool<Postgres>) {
+    let mut count = EXECUTE_BATCH_SIZE;
+
+    // Keep going until we get a less-than-full page.
+    while count >= EXECUTE_BATCH_SIZE {
+        match try_pump(pool, EXECUTE_BATCH_SIZE).await {
+            Ok(result) => {
+                log::info!(
             "Pumped {} events through {} handlers in {}ms. Got {} results. Poll: {}, execute: {}, save: {}",
-            result.inputs_processed,
+            result.events_processed,
             result.handlers,
             result.total_duration,
             result.results,
             result.poll_duration,
             result.execute_duration,
             result.save_duration
-        ),
-        Err(e) => {
-            log::error!("Failed to poll queue. Error: {:?}", e);
+        );
+                count = result.events_processed as i32;
+            }
+            Err(e) => {
+                log::error!("Failed to poll queue. Error: {:?}", e);
+                // Terminate loop.
+                count = 0;
+            }
         }
     }
 }
 
-/// Poll for a batch of inputs, run functions.
+/// Poll for a batch of inputs, run handler functions.
 /// Does not necessarily consume all messages on the queue.
-pub(crate) async fn try_pump(pool: &Pool<Postgres>) -> Result<PumpResult, Error> {
+pub(crate) async fn try_pump(pool: &Pool<Postgres>, batch_size: i32) -> Result<PumpResult, Error> {
     let start_poll = std::time::Instant::now();
 
     let mut tx = pool.begin().await?;
 
-    let inputs = db::event::poll(1000, &mut tx).await?;
+    let events = db::event::poll(batch_size, &mut tx).await?;
+    log::debug!("Polled {} from Event queue", events.len());
 
     // Get all handlers. Do so from inside the transaction so there's a
     // consistent view of the handlers table. If it becomes necessary to chunk
@@ -184,18 +184,18 @@ pub(crate) async fn try_pump(pool: &Pool<Postgres>) -> Result<PumpResult, Error>
     let handlers: Vec<HandlerSpec> = db::handler::get_all_enabled_handlers(&mut tx).await?;
 
     let start_execution = std::time::Instant::now();
-    let results = execution::run::run_all(&handlers, &inputs);
+    let results = execution::run::run_all(&handlers, &events);
 
     let start_save = std::time::Instant::now();
     db::handler::save_results(&results, &mut tx).await?;
 
-    log::info!("Got {} results", results.len());
+    log::debug!("Saved {} execution results", results.len());
 
     tx.commit().await?;
     let finish = std::time::Instant::now();
 
     Ok(PumpResult {
-        inputs_processed: inputs.len() as u32,
+        events_processed: events.len() as u32,
         handlers: handlers.len(),
         results: results.len(),
         poll_duration: start_execution.duration_since(start_poll).as_millis(),

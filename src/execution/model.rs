@@ -56,6 +56,9 @@ pub(crate) struct Event {
     // If there's an object_id field, it's represented here.
     pub(crate) object_id: Option<Identifier>,
 
+    // ID of the metadata assertion that generated this, or -1 if imported.
+    pub(crate) assertion_id: i64,
+
     // Remainder of the JSON structure once the hydrated fields have been removed.
     // See DR-0012.
     pub(crate) json: String,
@@ -170,6 +173,9 @@ impl Event {
                     let analyzer = EventAnalyzerId::from_str_value(analyzer_str);
                     let source = MetadataSourceId::from_str_value(source_str);
 
+                    // When ingested from an external source, we don't have the link back to the assertion id.
+                    let assertion_id = -1;
+
                     // Defaults to -1 (i.e. unassigned), so we can load events for insertion into the database.
                     // Events may be submitted without IDs, and
                     // they're assigned by the database on insertion.
@@ -207,6 +213,7 @@ impl Event {
                             source,
                             subject_id,
                             object_id,
+                            assertion_id,
                             json,
                         })
                     } else {

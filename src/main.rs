@@ -1,10 +1,14 @@
+use metadata_assertion::crossref::{self};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
 mod db;
+mod event_extraction;
 mod execution;
 mod local;
+mod metadata_assertion;
 mod service;
+mod util;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "metabeak", about = "Pardalotus Metabeak API.")]
@@ -25,10 +29,25 @@ struct Options {
     )]
     load_events: Option<PathBuf>,
 
-    #[structopt(long, help("Run a single cycle of the Event Handler pump and exit."))]
-    execute_one: bool,
+    #[structopt(
+        long,
+        help("Execute handlers over all Events in the queue. Exit when queue is empty.")
+    )]
+    execute: bool,
+
+    #[structopt(
+        long,
+        help("Fetch all Crossref metadata assertions since the last run.")
+    )]
+    fetch_crossref: bool,
+
+    #[structopt(long, help("Process the entire Metadata Assertion queue to produce Events. Exit when queue is empty."))]
+    extract: bool,
 }
 
+/// Run the main function.
+/// The sequencing of operations is in order of occurrence in the pipeline.
+/// This means if you select the right options, the output of one stage will be available for the next.
 #[tokio::main]
 async fn main() {
     env_logger::Builder::from_default_env()
@@ -67,11 +86,34 @@ async fn main() {
         }
     }
 
+    if opt.fetch_crossref {
+        log::info!("Poll Crossref for new metadata...");
+        match crossref::metadata_agent::pump_metadata(&db_pool).await {
+            Ok(_) => {
+                log::info!("Finished polling Crossref for metadata.");
+            }
+            Err(e) => {
+                log::error!("Error polling Crossref for metadata: {:?}", e);
+            }
+        }
+    }
+
+    if opt.extract {
+        log::info!("Processing metadata to extract events...");
+        match event_extraction::service::drain(&db_pool).await {
+            Ok(_) => {
+                log::info!("Finished extracting events.");
+            }
+            Err(e) => {
+                log::error!("Error extracting events: {:?}", e);
+            }
+        }
+    }
+
     // Run executor.
-    if opt.execute_one {
+    if opt.execute {
         log::info!("Starting executor...");
-        // For now just a sungle poll and exit.
-        service::pump(&db_pool).await;
+        service::drain(&db_pool).await;
         log::info!("Finish executor.");
     }
 
