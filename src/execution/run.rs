@@ -405,9 +405,9 @@ pub(crate) fn run_all(handlers: &[HandlerSpec], events: &[Event]) -> Vec<RunResu
 
     // Watchdog thread must exit or it'll keep ticking away, which would cause a memory leak.
     // If it doesn't terminate almost immediately that's a bug, and it's better to hang or panic.
-    log::info!("Wait for watchdog...");
+    log::debug!("Wait for watchdog...");
     watchdog_thread.join().unwrap();
-    log::info!("Watchdog stopped.");
+    log::debug!("Watchdog stopped.");
 
     results
 }

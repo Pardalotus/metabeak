@@ -69,7 +69,7 @@ pub(crate) async fn harvest<'a>(
                 if let Ok(json) = serde_json::to_string(&item) {
                     count += 1;
                     if (count % 1000) == 0 {
-                        log::info!("Done {} items.", count);
+                        log::debug!("Done {} items.", count);
                     }
 
                     assert_metadata(

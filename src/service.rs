@@ -189,7 +189,7 @@ pub(crate) async fn try_pump(pool: &Pool<Postgres>, batch_size: i32) -> Result<P
     let start_save = std::time::Instant::now();
     db::handler::save_results(&results, &mut tx).await?;
 
-    log::info!("Saved {} execution results", results.len());
+    log::debug!("Saved {} execution results", results.len());
 
     tx.commit().await?;
     let finish = std::time::Instant::now();

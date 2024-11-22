@@ -30,7 +30,7 @@ struct CrossrefResponseMessage {
 }
 
 async fn request_url(url: &str) -> Result<CrossrefResponse> {
-    log::info!("Try {}", url);
+    log::debug!("Try {}", url);
     Ok(reqwest::get(url).await?.json::<CrossrefResponse>().await?)
 }
 
@@ -51,7 +51,7 @@ pub(crate) async fn fetch(
 
     // On first page log how many results might be present.
     if cursor == "*" {
-        log::info!(
+        log::debug!(
             "Fetching results, total possible {} ",
             response.message.total_results
         );
