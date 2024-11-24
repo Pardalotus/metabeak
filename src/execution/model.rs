@@ -4,10 +4,10 @@ use scholarly_identifiers::identifiers::Identifier;
 use serde::{Deserialize, Serialize};
 use sqlx::prelude::FromRow;
 
-use crate::db::source::{EventAnalyzerId, MetadataSourceId};
-
-// This is provided by Cargo at build time, so complied as a static string.
-pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+use crate::{
+    db::source::{EventAnalyzerId, MetadataSourceId},
+    util::VERSION,
+};
 
 /// Environment passed into each function execution.
 #[derive(Serialize, Deserialize)]
