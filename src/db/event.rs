@@ -145,6 +145,7 @@ mod tests {
             subject_id_value: Some(String::from("10.5555/12345678")),
             object_id_type: Some(1), // Type of DOI from `scholarly_identifiers` crate.
             object_id_value: Some(String::from("10.5555/87654321")),
+            assertion_id: -1,
         };
 
         let event = result.to_event();
@@ -189,6 +190,7 @@ mod tests {
             subject_id_value: None,
             object_id_type: None,
             object_id_value: None,
+            assertion_id: -1,
         };
 
         let event = result.to_event();
@@ -230,6 +232,7 @@ mod tests {
             subject_id_value: Some(String::from("10.5555/12345678")),
             object_id_type: None,
             object_id_value: Some(String::from("10.5555/87654321")),
+            assertion_id: -1,
         };
 
         let event = result.to_event();
@@ -252,6 +255,7 @@ mod tests {
             subject_id_value: None,
             object_id_type: Some(1),
             object_id_value: None,
+            assertion_id: -1,
         };
 
         let event = result.to_event();

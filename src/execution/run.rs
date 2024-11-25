@@ -460,6 +460,7 @@ mod tests {
             subject_id: None,
             object_id: None,
             json: String::from("{}"),
+            assertion_id: -1,
         }];
 
         let results = run_all(&handlers, &events);
@@ -507,6 +508,7 @@ mod tests {
             subject_id: None,
             object_id: None,
             json: String::from("{}"),
+            assertion_id: -1,
         }];
 
         let results = run_all(&handlers, &events);
@@ -535,6 +537,7 @@ mod tests {
             subject_id: Some(Identifier::parse("https://doi.org/10.5555/12345678")),
             object_id: Some(Identifier::parse("https://doi.org/10.5555/242424x")),
             json: String::from("{\"hello\": \"world\"}"),
+            assertion_id: -1,
         }];
 
         let results = run_all(&handlers, &events);
@@ -629,6 +632,7 @@ mod tests {
                 subject_id: None,
                 object_id: None,
                 json: String::from("{\"x\": \"one\"}"),
+                assertion_id: -1,
             },
             Event {
                 event_id: 2,
@@ -637,6 +641,7 @@ mod tests {
                 subject_id: None,
                 object_id: None,
                 json: String::from("{\"x\": \"two\"}"),
+                assertion_id: -1,
             },
             Event {
                 event_id: 3,
@@ -645,6 +650,7 @@ mod tests {
                 subject_id: None,
                 object_id: None,
                 json: String::from("{\"x\": \"three\"}"),
+                assertion_id: -1,
             },
         ];
 
@@ -738,6 +744,7 @@ mod tests {
             subject_id: None,
             object_id: None,
             json: String::from("{}"),
+            assertion_id: -1,
         }];
 
         let results = run_all(&handlers, &events);
@@ -769,6 +776,7 @@ mod tests {
             subject_id: None,
             object_id: None,
             json: String::from("{}"),
+            assertion_id: -1,
         }];
 
         let results = run_all(&handlers, &events);
@@ -805,12 +813,13 @@ mod tests {
             subject_id: None,
             object_id: None,
             json: String::from("{}"),
+            assertion_id: -1,
         }];
 
         let results = run_all(&handlers, &events);
 
-        // We hit the timeout before we exhaust the stack. But stack overflow is also handled by V8.
-        assert_contains(-1, 1234, "took too long to run", &results);
+        // In future we may hit timeout or stack overflow error, depending on configuration.
+        assert_contains(4321, 1234, "Maximum call stack size exceeded", &results);
     }
 
     /// Stackoverflow on load gives an error.
@@ -834,6 +843,7 @@ mod tests {
             subject_id: None,
             object_id: None,
             json: String::from("{}"),
+            assertion_id: -1,
         }];
 
         let results = run_all(&handlers, &events);
@@ -868,6 +878,7 @@ mod tests {
                 subject_id: None,
                 object_id: None,
                 json: String::from("{}"),
+                assertion_id: -1,
             },
             Event {
                 event_id: 1234,
@@ -876,6 +887,7 @@ mod tests {
                 subject_id: None,
                 object_id: None,
                 json: String::from("{}"),
+                assertion_id: -1,
             },
         ];
 
@@ -927,6 +939,7 @@ mod tests {
                 subject_id: None,
                 object_id: None,
                 json: String::from("{}"),
+                assertion_id: -1,
             },
             Event {
                 event_id: 2222,
@@ -935,6 +948,7 @@ mod tests {
                 subject_id: None,
                 object_id: None,
                 json: String::from("{}"),
+                assertion_id: -1,
             },
             Event {
                 event_id: 3333,
@@ -943,6 +957,7 @@ mod tests {
                 subject_id: None,
                 object_id: None,
                 json: String::from("{}"),
+                assertion_id: -1,
             },
         ];
 
@@ -998,6 +1013,7 @@ mod tests {
                 subject_id: None,
                 object_id: None,
                 json: String::from("{}"),
+                assertion_id: -1,
             },
             Event {
                 event_id: 2222,
@@ -1006,6 +1022,7 @@ mod tests {
                 subject_id: None,
                 object_id: None,
                 json: String::from("{}"),
+                assertion_id: -1,
             },
             Event {
                 event_id: 3333,
@@ -1014,6 +1031,7 @@ mod tests {
                 subject_id: None,
                 object_id: None,
                 json: String::from("{}"),
+                assertion_id: -1,
             },
         ];
 
@@ -1048,6 +1066,7 @@ mod tests {
             subject_id: None,
             object_id: None,
             json: String::from("{}"),
+            assertion_id: -1,
         }];
 
         let results = run_all(&handlers, &events);
@@ -1074,6 +1093,7 @@ mod tests {
             subject_id: None,
             object_id: None,
             json: String::from("{}"),
+            assertion_id: -1,
         }];
 
         let results = run_all(&handlers, &events);
