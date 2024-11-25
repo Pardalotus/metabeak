@@ -10,21 +10,26 @@ pub(crate) enum HandlerState {
     Enabled = 1,
 }
 
-/// Insert a handler function, returning its ID, if it was newly created.
-/// If it already existed (based on its content hash) then return [sqlx::Error::RowNotFound].
+/// Insert a handler function.
+/// Returning the Handler ID, and boolean flag to indicate if it was newly created or already existed.
 pub(crate) async fn insert_handler(
     task: &HandlerSpec,
     hash: &str,
     owner_id: i32,
     status: HandlerState,
     pool: &Pool<Postgres>,
-) -> Result<u64, sqlx::Error> {
-    let row: (i64,) = sqlx::query_as(
-        "INSERT INTO handler
-         (owner_id, hash, code, status)
-        VALUES ($1,$2, $3, $4)
-        ON CONFLICT (hash) DO NOTHING
-        RETURNING handler_id;",
+) -> Result<(i64, bool), sqlx::Error> {
+    let row: (Option<i64>, Option<i64>) = sqlx::query_as(
+        "WITH new_id AS (
+                    INSERT INTO handler
+                    (owner_id, hash, code, status)
+                    VALUES ($1, $2, $3, $4)
+                    ON CONFLICT (hash) DO NOTHING
+                    RETURNING handler_id),
+        old_id AS (SELECT handler_id
+                    FROM handler
+                    WHERE hash = $2 LIMIT 1)
+        SELECT (SELECT * from new_id) AS new, (SELECT * FROM old_id) AS old;",
     )
     .bind(owner_id)
     .bind(hash)
@@ -33,7 +38,11 @@ pub(crate) async fn insert_handler(
     .fetch_one(pool)
     .await?;
 
-    Ok(row.0 as u64)
+    match row {
+        (Some(new), _) => Ok((new, true)),
+        (None, Some(old)) => Ok((old, false)),
+        _ => Err(sqlx::Error::RowNotFound),
+    }
 }
 
 /// Retrieve all Handler functions that are enabled.

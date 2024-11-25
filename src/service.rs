@@ -16,6 +16,13 @@ use crate::{
 
 const EXECUTE_BATCH_SIZE: i32 = 100;
 
+/// List all handlers.
+/// For now, assumes that there are enough to fit in memory, and an API response.
+pub(crate) async fn list_handlers(pool: &Pool<Postgres>) -> Result<Vec<HandlerSpec>, sqlx::Error> {
+    let mut tx = pool.begin().await?;
+    db::handler::get_all_enabled_handlers(&mut tx).await
+}
+
 /// Load functions from specified directory.
 /// These are configured at boot, not directly by a user, so the result is logged.
 pub(crate) async fn load_handler_functions_from_disk(
@@ -28,7 +35,9 @@ pub(crate) async fn load_handler_functions_from_disk(
             TaskLoadResult::New { task_id } => {
                 log::info!("Loaded task {} from {}", task_id, &filename)
             }
-            TaskLoadResult::Exists => log::info!("Task already exists at {}", &filename),
+            TaskLoadResult::Exists { task_id } => {
+                log::info!("Task already exists at {} with id {}", &filename, task_id)
+            }
             TaskLoadResult::FailedSave() => {
                 log::error!("Failed to load task from {}", &filename)
             }
@@ -36,14 +45,14 @@ pub(crate) async fn load_handler_functions_from_disk(
     }
 }
 
-enum TaskLoadResult {
-    New { task_id: u64 },
-    Exists,
+pub(crate) enum TaskLoadResult {
+    New { task_id: i64 },
+    Exists { task_id: i64 },
     FailedSave(),
 }
 
 /// Load a function. On creation return New ID, or report that it already exists.
-async fn load_handler(pool: &Pool<Postgres>, task: &HandlerSpec) -> TaskLoadResult {
+pub(crate) async fn load_handler(pool: &Pool<Postgres>, task: &HandlerSpec) -> TaskLoadResult {
     let hash = hash_data(&task.code);
 
     log::info!("Load function {}", hash);
@@ -52,11 +61,13 @@ async fn load_handler(pool: &Pool<Postgres>, task: &HandlerSpec) -> TaskLoadResu
         db::handler::insert_handler(task, &hash, 0, db::handler::HandlerState::Enabled, pool);
 
     match insert_result.await {
-        Ok(handler_id) => TaskLoadResult::New {
+        Ok((handler_id, true)) => TaskLoadResult::New {
+            task_id: handler_id,
+        },
+        Ok((handler_id, false)) => TaskLoadResult::Exists {
             task_id: handler_id,
         },
         Err(e) => match e {
-            sqlx::Error::RowNotFound => TaskLoadResult::Exists,
             _ => {
                 log::error!("Failed to save handler {}: {:?}", hash, e);
                 TaskLoadResult::FailedSave()

@@ -30,7 +30,7 @@ impl Global {
 }
 
 /// A handler function to be run.
-#[derive(Debug, FromRow)]
+#[derive(Debug, FromRow, Serialize)]
 pub(crate) struct HandlerSpec {
     /// ID of the handler, to allow collation of results.
     /// -1 for undefined (e.g. for testing)
