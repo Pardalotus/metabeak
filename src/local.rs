@@ -2,7 +2,7 @@
 
 use std::fs;
 
-use crate::execution::model::HandlerSpec;
+use crate::{db::handler::HandlerState, execution::model::HandlerSpec};
 
 /// Load tasks from JS files in directory.
 /// Return list of filenames and task specs.
@@ -26,6 +26,7 @@ pub(crate) fn load_tasks_from_dir(load_dir: std::path::PathBuf) -> Vec<(String, 
                                         HandlerSpec {
                                             handler_id: 0,
                                             code: content,
+                                            status: HandlerState::Enabled as i32,
                                         },
                                     ));
                                 }

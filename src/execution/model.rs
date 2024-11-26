@@ -3,6 +3,7 @@
 use scholarly_identifiers::identifiers::Identifier;
 use serde::{Deserialize, Serialize};
 use sqlx::prelude::FromRow;
+use time::OffsetDateTime;
 
 use crate::{
     db::source::{EventAnalyzerId, MetadataSourceId},
@@ -33,11 +34,14 @@ impl Global {
 #[derive(Debug, FromRow, Serialize)]
 pub(crate) struct HandlerSpec {
     /// ID of the handler, to allow collation of results.
-    /// -1 for undefined (e.g. for testing)
+    /// -1 for undefined (e.g. prior to saving)
     pub(crate) handler_id: i64,
 
     /// JavaScript code that must contain a function named 'f'.
     pub(crate) code: String,
+
+    /// Weak reference to HandlerStatus for ease of database interaction.
+    pub(crate) status: i32,
 }
 
 /// Input data for a handler function run.
@@ -237,8 +241,12 @@ impl Event {
 
 /// Result from a handler function run.
 /// A handler function returns an array of results. There will be one of these objects per entry.
-#[derive(Debug, PartialEq)]
-pub(crate) struct RunResult {
+#[derive(Debug, PartialEq, FromRow, Serialize)]
+pub(crate) struct ExecutionResult {
+    /// ID of the handler function used.
+    /// -1 on creation
+    pub(crate) result_id: i64,
+
     /// ID of the handler function used.
     pub(crate) handler_id: i64,
 
@@ -246,8 +254,11 @@ pub(crate) struct RunResult {
     pub(crate) event_id: i64,
 
     /// Single JSON object.
-    pub(crate) output: Option<String>,
+    pub(crate) result: Option<String>,
 
     /// Error string, if execution failed.
     pub(crate) error: Option<String>,
+
+    #[serde(with = "time::serde::iso8601::option")]
+    pub(crate) created: Option<OffsetDateTime>,
 }

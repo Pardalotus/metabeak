@@ -8,7 +8,7 @@ use crate::{
     db::{self, event::EventQueueState},
     execution::{
         self,
-        model::{Event, HandlerSpec},
+        model::{Event, ExecutionResult, HandlerSpec},
     },
     local,
     util::hash_data,
@@ -214,4 +214,49 @@ pub(crate) async fn try_pump(pool: &Pool<Postgres>, batch_size: i32) -> Result<P
         save_duration: finish.duration_since(start_save).as_millis(),
         total_duration: finish.duration_since(start_poll).as_millis(),
     })
+}
+
+/// Get Handler Spec by ID, or None.
+pub(crate) async fn get_handler_by_id(
+    pool: &Pool<Postgres>,
+    handler_id: i64,
+) -> Option<HandlerSpec> {
+    match db::handler::get_by_id(&pool, handler_id).await {
+        Ok(handler_id) => Some(handler_id),
+        Err(e) => {
+            log::error!("Didn't find handler id {}, error: {:?}", handler_id, e);
+            None
+        }
+    }
+}
+
+/// Get a page of results, plus a cursor for the next page.
+/// If filter_successful is true, only return successful results.
+pub(crate) async fn get_results(
+    pool: &Pool<Postgres>,
+    handler_id: i64,
+    cursor: i64,
+    page_size: i32,
+    filter_successful: bool,
+) -> (Vec<ExecutionResult>, i64) {
+    let results: Result<Vec<ExecutionResult>, sqlx::Error> = if filter_successful {
+        db::handler::get_success_results(pool, handler_id, cursor, page_size).await
+    } else {
+        db::handler::get_all_results(pool, handler_id, cursor, page_size).await
+    };
+
+    match results {
+        Ok(results) => {
+            let next_cursor = results.last().map(|x| x.result_id).unwrap_or(-1);
+            (results, next_cursor)
+        }
+        Err(err) => {
+            log::error!(
+                "Error retrieving results for handler id: {}, error: {:?}",
+                handler_id,
+                err
+            );
+            (vec![], -1)
+        }
+    }
 }
