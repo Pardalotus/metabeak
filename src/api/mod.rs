@@ -127,7 +127,7 @@ async fn post_function(State(pool): State<Pool<Postgres>>, mut multipart: Multip
         }
     }
 
-    return (
+    (
         StatusCode::BAD_REQUEST,
         ErasedJson::pretty(model::ErrorPage {
             status: String::from("invalid-function"),
@@ -136,7 +136,7 @@ async fn post_function(State(pool): State<Pool<Postgres>>, mut multipart: Multip
             ),
         }),
     )
-        .into_response();
+        .into_response()
 }
 
 async fn get_function_info(

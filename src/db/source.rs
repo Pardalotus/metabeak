@@ -40,7 +40,7 @@ mod metadata_source_tests {
 
     #[test]
     fn roundtrip_metadatasource() {
-        let inputs = vec!["crossref", "test"];
+        let inputs = ["crossref", "test"];
         for input in inputs.iter() {
             let from_str = MetadataSourceId::from_str_value(input);
             let as_str = from_str.to_str_value();
@@ -115,7 +115,7 @@ mod event_analyzer_id_tests {
 
     #[test]
     fn roundtrip_event_analyzer_id() {
-        let inputs = vec!["lifecycle", "test", "citation", "UNKNOWN"];
+        let inputs = ["lifecycle", "test", "citation", "UNKNOWN"];
         for input in inputs.iter() {
             let from_str = EventAnalyzerId::from_str_value(input);
             let as_str = from_str.to_str_value();

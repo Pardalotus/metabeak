@@ -6,7 +6,6 @@ use sqlx::{Pool, Postgres, Transaction};
 
 use time::{Duration, OffsetDateTime};
 
-use scholarly_identifiers;
 
 use crate::db::agents::get_checkpoint;
 use crate::db::agents::set_checkpoint;

@@ -67,11 +67,9 @@ pub(crate) async fn load_handler(pool: &Pool<Postgres>, task: &HandlerSpec) -> T
         Ok((handler_id, false)) => TaskLoadResult::Exists {
             task_id: handler_id,
         },
-        Err(e) => match e {
-            _ => {
-                log::error!("Failed to save handler {}: {:?}", hash, e);
-                TaskLoadResult::FailedSave()
-            }
+        Err(e) => {
+            log::error!("Failed to save handler {}: {:?}", hash, e);
+            TaskLoadResult::FailedSave()
         },
     }
 }
@@ -221,7 +219,7 @@ pub(crate) async fn get_handler_by_id(
     pool: &Pool<Postgres>,
     handler_id: i64,
 ) -> Option<HandlerSpec> {
-    match db::handler::get_by_id(&pool, handler_id).await {
+    match db::handler::get_by_id(pool, handler_id).await {
         Ok(handler_id) => Some(handler_id),
         Err(e) => {
             log::error!("Didn't find handler id {}, error: {:?}", handler_id, e);

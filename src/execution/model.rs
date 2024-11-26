@@ -189,20 +189,20 @@ impl Event {
                     };
 
                     let subject_id = if let Some(val) = data_obj.get("subject_id") {
-                        val.as_str().map(|id_str| Identifier::parse(id_str))
+                        val.as_str().map(Identifier::parse)
                     } else {
                         None
                     };
 
                     let object_id = if let Some(val) = data_obj.get("object_id") {
-                        val.as_str().map(|id_str| Identifier::parse(id_str))
+                        val.as_str().map(Identifier::parse)
                     } else {
                         None
                     };
 
                     let mut normalized_event = serde_json::Map::new();
                     for field in data_obj.keys() {
-                        if is_hydrated_field(&field) {
+                        if is_hydrated_field(field) {
                             if let Some(obj) = data_obj.get(field) {
                                 normalized_event.insert(field.clone(), obj.clone());
                             }

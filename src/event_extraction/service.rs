@@ -73,7 +73,7 @@ pub(crate) async fn drain(pool: &Pool<Postgres>) -> anyhow::Result<()> {
 
     // Stop as soon as the page of events is not full, as it's the last page.
     while count >= BATCH_SIZE {
-        let (count_assertions_read, count_events_produced) = pump_n(&pool, BATCH_SIZE).await?;
+        let (count_assertions_read, count_events_produced) = pump_n(pool, BATCH_SIZE).await?;
         count = count_assertions_read as i32;
 
         log::info!(
