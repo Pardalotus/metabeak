@@ -28,7 +28,7 @@ pub(crate) async fn insert_metadata_assertion<'a>(
         ON CONFLICT (subject_entity_id, hash, source_id)
         DO NOTHING;",
     )
-    .bind(&json)
+    .bind(json)
     .bind(source as i32)
     .bind(subject_entity_id)
     .bind(hash)
