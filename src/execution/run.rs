@@ -14,7 +14,7 @@ use v8::{Context, Function, HandleScope, IsolateHandle, Local, Object, V8};
 
 use crate::execution::model::Global;
 
-use super::model::{Event, HandlerSpec, RunResult};
+use super::model::{Event, ExecutionResult, HandlerSpec};
 
 static V8_INITIALIZED: Once = Once::new();
 
@@ -38,7 +38,7 @@ pub(crate) fn init() {
 fn report_result_output(
     handler_spec: &HandlerSpec,
     event_id: i64,
-    results: &mut Vec<RunResult>,
+    results: &mut Vec<ExecutionResult>,
     result: Local<'_, v8::Value>,
     scope: &mut HandleScope<'_, Context>,
 ) {
@@ -61,11 +61,13 @@ fn report_result_output(
         // Expect an array of results. Split this up and save eacn one as a JSON blob.
         for result in result_array.iter() {
             match serde_json::to_string(result) {
-                Ok(result_json) => results.push(RunResult {
+                Ok(result_json) => results.push(ExecutionResult {
+                    result_id: -1,
                     event_id,
                     handler_id: handler_spec.handler_id,
-                    output: Some(result_json),
+                    result: Some(result_json),
                     error: None,
+                    created: None,
                 }),
                 Err(e) => {
                     log::error!(
@@ -93,12 +95,19 @@ fn report_result_output(
 }
 
 /// Push an error message to the results.
-fn report_error(handler_id: i64, event_id: i64, results: &mut Vec<RunResult>, message: String) {
-    results.push(RunResult {
+fn report_error(
+    handler_id: i64,
+    event_id: i64,
+    results: &mut Vec<ExecutionResult>,
+    message: String,
+) {
+    results.push(ExecutionResult {
+        result_id: -1,
         event_id,
         handler_id,
-        output: None,
+        result: None,
         error: Some(message),
+        created: None,
     });
 }
 
@@ -108,7 +117,7 @@ fn report_error(handler_id: i64, event_id: i64, results: &mut Vec<RunResult>, me
 /// A little strange, but lets us keep the separation of concerns, and handle both "does f exist" and "is f a function".
 fn get_f_function<'s>(
     handler_spec: &HandlerSpec,
-    results: &mut Vec<RunResult>,
+    results: &mut Vec<ExecutionResult>,
     task_scope: &mut HandleScope<'s>,
     task_proxy: Local<'s, Object>,
 ) -> Option<(Local<'s, Function>, Local<'s, v8::Value>)> {
@@ -144,7 +153,7 @@ fn get_f_function<'s>(
 /// Return success, log errors to results vec.
 fn load_script(
     handler_spec: &HandlerSpec,
-    results: &mut Vec<RunResult>,
+    results: &mut Vec<ExecutionResult>,
     task_scope: &mut HandleScope<'_, Context>,
 ) -> bool {
     if let Some(code) = v8::String::new(task_scope, &handler_spec.code) {
@@ -222,7 +231,7 @@ fn set_variable_from_json(
 
 /// Run all tasks against all inputs.
 /// Create an isolated environment for each distinct user.
-pub(crate) fn run_all(handlers: &[HandlerSpec], events: &[Event]) -> Vec<RunResult> {
+pub(crate) fn run_all(handlers: &[HandlerSpec], events: &[Event]) -> Vec<ExecutionResult> {
     log::info!(
         "Run {} tasks against {} inputs",
         handlers.len(),
@@ -281,7 +290,7 @@ pub(crate) fn run_all(handlers: &[HandlerSpec], events: &[Event]) -> Vec<RunResu
         }
     });
 
-    let mut results: Vec<RunResult> = vec![];
+    let mut results: Vec<ExecutionResult> = vec![];
 
     // Representation of the global 'environment' variable provided to all function invocations.
     let environment_json = Global::build().json();
@@ -413,7 +422,7 @@ pub(crate) fn run_all(handlers: &[HandlerSpec], events: &[Event]) -> Vec<RunResu
 }
 
 /// Poll from 'terminated handler' channel and report an error message.
-fn report_terminated(terminated_chan: &mpsc::Receiver<i64>, results: &mut Vec<RunResult>) {
+fn report_terminated(terminated_chan: &mpsc::Receiver<i64>, results: &mut Vec<ExecutionResult>) {
     // Read until we got all messages, not until it closed.
     for handler_id in terminated_chan.try_iter() {
         report_error(
@@ -451,6 +460,7 @@ mod tests {
         let handlers: Vec<HandlerSpec> = vec![HandlerSpec {
             handler_id: 1234,
             code: String::from("function f(args) { return [{\"result\": \"one\"}, {\"result\": \"two\"}, {\"result\": \"three\"}]; }"),
+            status: 1
         }];
 
         let events: Vec<Event> = vec![Event {
@@ -460,6 +470,7 @@ mod tests {
             subject_id: None,
             object_id: None,
             json: String::from("{}"),
+            assertion_id: -1,
         }];
 
         let results = run_all(&handlers, &events);
@@ -467,23 +478,29 @@ mod tests {
         assert_eq!(
             results,
             vec![
-                RunResult {
+                ExecutionResult {
                     handler_id: 1234,
                     event_id: 4321,
-                    output: Some(String::from("{\"result\":\"one\"}")),
-                    error: None
+                    result: Some(String::from("{\"result\":\"one\"}")),
+                    error: None,
+                    result_id: -1,
+                    created: None
                 },
-                RunResult {
+                ExecutionResult {
                     handler_id: 1234,
                     event_id: 4321,
-                    output: Some(String::from("{\"result\":\"two\"}")),
-                    error: None
+                    result: Some(String::from("{\"result\":\"two\"}")),
+                    error: None,
+                    result_id: -1,
+                    created: None
                 },
-                RunResult {
+                ExecutionResult {
                     handler_id: 1234,
                     event_id: 4321,
-                    output: Some(String::from("{\"result\":\"three\"}")),
-                    error: None
+                    result: Some(String::from("{\"result\":\"three\"}")),
+                    error: None,
+                    result_id: -1,
+                    created: None
                 }
             ]
         );
@@ -498,6 +515,7 @@ mod tests {
         let handlers: Vec<HandlerSpec> = vec![HandlerSpec {
             handler_id: 1234,
             code: String::from("function f(args) { return []; }"),
+            status: 1,
         }];
 
         let events: Vec<Event> = vec![Event {
@@ -507,6 +525,7 @@ mod tests {
             subject_id: None,
             object_id: None,
             json: String::from("{}"),
+            assertion_id: -1,
         }];
 
         let results = run_all(&handlers, &events);
@@ -524,6 +543,7 @@ mod tests {
         let handlers: Vec<HandlerSpec> = vec![HandlerSpec {
             handler_id: 1234,
             code: String::from("function f(args) { return [args]; }"),
+            status: 1,
         }];
 
         // Event using an Identifier.
@@ -535,12 +555,13 @@ mod tests {
             subject_id: Some(Identifier::parse("https://doi.org/10.5555/12345678")),
             object_id: Some(Identifier::parse("https://doi.org/10.5555/242424x")),
             json: String::from("{\"hello\": \"world\"}"),
+            assertion_id: -1,
         }];
 
         let results = run_all(&handlers, &events);
 
         let returned_json: serde_json::Value =
-            serde_json::from_str(&results.first().unwrap().output.clone().unwrap().clone())
+            serde_json::from_str(&results.first().unwrap().result.clone().unwrap().clone())
                 .unwrap();
 
         assert_eq!(
@@ -609,14 +630,17 @@ mod tests {
             HandlerSpec {
                 handler_id: 1,
                 code: String::from("function f(args) { return [args.x + '-one']; }"),
+                status: 1,
             },
             HandlerSpec {
                 handler_id: 2,
                 code: String::from("function f(args) { return [args.x + '-two']; }"),
+                status: 1,
             },
             HandlerSpec {
                 handler_id: 3,
                 code: String::from("function f(args) { return [args.x + '-three']; }"),
+                status: 1,
             },
         ];
 
@@ -629,6 +653,7 @@ mod tests {
                 subject_id: None,
                 object_id: None,
                 json: String::from("{\"x\": \"one\"}"),
+                assertion_id: -1,
             },
             Event {
                 event_id: 2,
@@ -637,6 +662,7 @@ mod tests {
                 subject_id: None,
                 object_id: None,
                 json: String::from("{\"x\": \"two\"}"),
+                assertion_id: -1,
             },
             Event {
                 event_id: 3,
@@ -645,6 +671,7 @@ mod tests {
                 subject_id: None,
                 object_id: None,
                 json: String::from("{\"x\": \"three\"}"),
+                assertion_id: -1,
             },
         ];
 
@@ -653,59 +680,77 @@ mod tests {
         assert_eq!(
             results,
             vec![
-                RunResult {
+                ExecutionResult {
                     handler_id: 1,
                     event_id: 1,
-                    output: Some(String::from("\"one-one\"")),
-                    error: None
+                    result: Some(String::from("\"one-one\"")),
+                    error: None,
+                    result_id: -1,
+                    created: None
                 },
-                RunResult {
+                ExecutionResult {
                     handler_id: 1,
                     event_id: 2,
-                    output: Some(String::from("\"two-one\"")),
-                    error: None
+                    result: Some(String::from("\"two-one\"")),
+                    error: None,
+                    result_id: -1,
+                    created: None
                 },
-                RunResult {
+                ExecutionResult {
                     handler_id: 1,
                     event_id: 3,
-                    output: Some(String::from("\"three-one\"")),
-                    error: None
+                    result: Some(String::from("\"three-one\"")),
+                    error: None,
+                    result_id: -1,
+                    created: None
                 },
-                RunResult {
+                ExecutionResult {
                     handler_id: 2,
                     event_id: 1,
-                    output: Some(String::from("\"one-two\"")),
-                    error: None
+                    result: Some(String::from("\"one-two\"")),
+                    error: None,
+                    result_id: -1,
+                    created: None
                 },
-                RunResult {
+                ExecutionResult {
                     handler_id: 2,
                     event_id: 2,
-                    output: Some(String::from("\"two-two\"")),
-                    error: None
+                    result: Some(String::from("\"two-two\"")),
+                    error: None,
+                    result_id: -1,
+                    created: None
                 },
-                RunResult {
+                ExecutionResult {
                     handler_id: 2,
                     event_id: 3,
-                    output: Some(String::from("\"three-two\"")),
-                    error: None
+                    result: Some(String::from("\"three-two\"")),
+                    error: None,
+                    result_id: -1,
+                    created: None
                 },
-                RunResult {
+                ExecutionResult {
                     handler_id: 3,
                     event_id: 1,
-                    output: Some(String::from("\"one-three\"")),
-                    error: None
+                    result: Some(String::from("\"one-three\"")),
+                    error: None,
+                    result_id: -1,
+                    created: None
                 },
-                RunResult {
+                ExecutionResult {
                     handler_id: 3,
                     event_id: 2,
-                    output: Some(String::from("\"two-three\"")),
-                    error: None
+                    result: Some(String::from("\"two-three\"")),
+                    error: None,
+                    result_id: -1,
+                    created: None
                 },
-                RunResult {
+                ExecutionResult {
                     handler_id: 3,
                     event_id: 3,
-                    output: Some(String::from("\"three-three\"")),
-                    error: None
+                    result: Some(String::from("\"three-three\"")),
+                    error: None,
+                    result_id: -1,
+                    created: None
                 }
             ]
         );
@@ -729,6 +774,7 @@ mod tests {
         let handlers: Vec<HandlerSpec> = vec![HandlerSpec {
             handler_id: 1234,
             code: String::from("function x() {}; function f(args) { return x; }"),
+            status: 1,
         }];
 
         let events: Vec<Event> = vec![Event {
@@ -738,6 +784,7 @@ mod tests {
             subject_id: None,
             object_id: None,
             json: String::from("{}"),
+            assertion_id: -1,
         }];
 
         let results = run_all(&handlers, &events);
@@ -760,6 +807,7 @@ mod tests {
         let handlers: Vec<HandlerSpec> = vec![HandlerSpec {
             handler_id: 1234,
             code: String::from("{}; function f(args) { }"),
+            status: 1,
         }];
 
         let events: Vec<Event> = vec![Event {
@@ -769,6 +817,7 @@ mod tests {
             subject_id: None,
             object_id: None,
             json: String::from("{}"),
+            assertion_id: -1,
         }];
 
         let results = run_all(&handlers, &events);
@@ -796,6 +845,7 @@ mod tests {
             code: String::from(
                 "function x(i) { return x(i+1); } function f(args) { return x(1); }",
             ),
+            status: 1,
         }];
 
         let events: Vec<Event> = vec![Event {
@@ -805,12 +855,13 @@ mod tests {
             subject_id: None,
             object_id: None,
             json: String::from("{}"),
+            assertion_id: -1,
         }];
 
         let results = run_all(&handlers, &events);
 
-        // We hit the timeout before we exhaust the stack. But stack overflow is also handled by V8.
-        assert_contains(-1, 1234, "took too long to run", &results);
+        // In future we may hit timeout or stack overflow error, depending on configuration.
+        assert_contains(4321, 1234, "Maximum call stack size exceeded", &results);
     }
 
     /// Stackoverflow on load gives an error.
@@ -825,6 +876,7 @@ mod tests {
             code: String::from(
                 "function x(i) { return x(i+1); }; x(1); function f(args) { return [1] }",
             ),
+            status: 1,
         }];
 
         let events: Vec<Event> = vec![Event {
@@ -834,6 +886,7 @@ mod tests {
             subject_id: None,
             object_id: None,
             json: String::from("{}"),
+            assertion_id: -1,
         }];
 
         let results = run_all(&handlers, &events);
@@ -857,6 +910,7 @@ mod tests {
                     return [1];
                 }",
             ),
+            status: 1,
         }];
 
         // Send 2 events. Neither should be executed.
@@ -868,6 +922,7 @@ mod tests {
                 subject_id: None,
                 object_id: None,
                 json: String::from("{}"),
+                assertion_id: -1,
             },
             Event {
                 event_id: 1234,
@@ -876,6 +931,7 @@ mod tests {
                 subject_id: None,
                 object_id: None,
                 json: String::from("{}"),
+                assertion_id: -1,
             },
         ];
 
@@ -916,6 +972,7 @@ mod tests {
                     return [args];
                 }",
             ),
+            status: 1,
         }];
 
         // Send 2 events. Neither should be executed.
@@ -927,6 +984,7 @@ mod tests {
                 subject_id: None,
                 object_id: None,
                 json: String::from("{}"),
+                assertion_id: -1,
             },
             Event {
                 event_id: 2222,
@@ -935,6 +993,7 @@ mod tests {
                 subject_id: None,
                 object_id: None,
                 json: String::from("{}"),
+                assertion_id: -1,
             },
             Event {
                 event_id: 3333,
@@ -943,6 +1002,7 @@ mod tests {
                 subject_id: None,
                 object_id: None,
                 json: String::from("{}"),
+                assertion_id: -1,
             },
         ];
 
@@ -988,6 +1048,7 @@ mod tests {
                     return [args];
                 }",
             ),
+            status: 1,
         }];
 
         let events: Vec<Event> = vec![
@@ -998,6 +1059,7 @@ mod tests {
                 subject_id: None,
                 object_id: None,
                 json: String::from("{}"),
+                assertion_id: -1,
             },
             Event {
                 event_id: 2222,
@@ -1006,6 +1068,7 @@ mod tests {
                 subject_id: None,
                 object_id: None,
                 json: String::from("{}"),
+                assertion_id: -1,
             },
             Event {
                 event_id: 3333,
@@ -1014,6 +1077,7 @@ mod tests {
                 subject_id: None,
                 object_id: None,
                 json: String::from("{}"),
+                assertion_id: -1,
             },
         ];
 
@@ -1039,6 +1103,7 @@ mod tests {
                   return new Response('Hello, World!');
                 });",
             ),
+            status: 1,
         }];
 
         let events: Vec<Event> = vec![Event {
@@ -1048,6 +1113,7 @@ mod tests {
             subject_id: None,
             object_id: None,
             json: String::from("{}"),
+            assertion_id: -1,
         }];
 
         let results = run_all(&handlers, &events);
@@ -1059,12 +1125,13 @@ mod tests {
     /// Not much use, but who knows.
     #[test]
     #[serial]
-    fn son_deno() {
+    fn json_deno() {
         init_tests();
 
         let handlers: Vec<HandlerSpec> = vec![HandlerSpec {
             handler_id: 1234,
             code: String::from("function f() {return [JSON.stringify([1,2,3])] }"),
+            status: 1,
         }];
 
         let events: Vec<Event> = vec![Event {
@@ -1074,17 +1141,20 @@ mod tests {
             subject_id: None,
             object_id: None,
             json: String::from("{}"),
+            assertion_id: -1,
         }];
 
         let results = run_all(&handlers, &events);
 
         assert_eq!(
             results,
-            vec![RunResult {
+            vec![ExecutionResult {
                 handler_id: 1234,
                 event_id: 1111,
-                output: Some(String::from("\"[1,2,3]\"")),
-                error: None
+                result_id: -1,
+                result: Some(String::from("\"[1,2,3]\"")),
+                error: None,
+                created: None
             }]
         );
     }
@@ -1093,7 +1163,7 @@ mod tests {
     // Util
     //
 
-    fn assert_contains(event_id: i64, handler_id: i64, text: &str, results: &[RunResult]) {
+    fn assert_contains(event_id: i64, handler_id: i64, text: &str, results: &[ExecutionResult]) {
         let error_results = results.iter().filter(|r| {
             r.handler_id == handler_id
                 && r.event_id == event_id

@@ -62,6 +62,15 @@ CREATE TABLE execution_result (
     error TEXT NULL,
     created TIMESTAMPTZ NOT NULL DEFAULT NOW());
 
+-- Used for querying successful results after cursor.
+CREATE INDEX success_execution_idx
+    ON execution_result(handler_id, result)
+    WHERE result IS NOT NULL;
+
+-- Used for querying all results after cursor.
+CREATE INDEX all_execution_idx
+    ON execution_result(handler_id, result);
+
 -- Metadata assertion of a source.
 -- There may be multiple metadata assertions about a subject entity, even by a source.
 -- Older duplicate assertions may be removed.

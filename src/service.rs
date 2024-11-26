@@ -8,13 +8,20 @@ use crate::{
     db::{self, event::EventQueueState},
     execution::{
         self,
-        model::{Event, HandlerSpec},
+        model::{Event, ExecutionResult, HandlerSpec},
     },
     local,
     util::hash_data,
 };
 
 const EXECUTE_BATCH_SIZE: i32 = 100;
+
+/// List all handlers.
+/// For now, assumes that there are enough to fit in memory, and an API response.
+pub(crate) async fn list_handlers(pool: &Pool<Postgres>) -> Result<Vec<HandlerSpec>, sqlx::Error> {
+    let mut tx = pool.begin().await?;
+    db::handler::get_all_enabled_handlers(&mut tx).await
+}
 
 /// Load functions from specified directory.
 /// These are configured at boot, not directly by a user, so the result is logged.
@@ -28,7 +35,9 @@ pub(crate) async fn load_handler_functions_from_disk(
             TaskLoadResult::New { task_id } => {
                 log::info!("Loaded task {} from {}", task_id, &filename)
             }
-            TaskLoadResult::Exists => log::info!("Task already exists at {}", &filename),
+            TaskLoadResult::Exists { task_id } => {
+                log::info!("Task already exists at {} with id {}", &filename, task_id)
+            }
             TaskLoadResult::FailedSave() => {
                 log::error!("Failed to load task from {}", &filename)
             }
@@ -36,14 +45,14 @@ pub(crate) async fn load_handler_functions_from_disk(
     }
 }
 
-enum TaskLoadResult {
-    New { task_id: u64 },
-    Exists,
+pub(crate) enum TaskLoadResult {
+    New { task_id: i64 },
+    Exists { task_id: i64 },
     FailedSave(),
 }
 
 /// Load a function. On creation return New ID, or report that it already exists.
-async fn load_handler(pool: &Pool<Postgres>, task: &HandlerSpec) -> TaskLoadResult {
+pub(crate) async fn load_handler(pool: &Pool<Postgres>, task: &HandlerSpec) -> TaskLoadResult {
     let hash = hash_data(&task.code);
 
     log::info!("Load function {}", hash);
@@ -52,11 +61,13 @@ async fn load_handler(pool: &Pool<Postgres>, task: &HandlerSpec) -> TaskLoadResu
         db::handler::insert_handler(task, &hash, 0, db::handler::HandlerState::Enabled, pool);
 
     match insert_result.await {
-        Ok(handler_id) => TaskLoadResult::New {
+        Ok((handler_id, true)) => TaskLoadResult::New {
+            task_id: handler_id,
+        },
+        Ok((handler_id, false)) => TaskLoadResult::Exists {
             task_id: handler_id,
         },
         Err(e) => match e {
-            sqlx::Error::RowNotFound => TaskLoadResult::Exists,
             _ => {
                 log::error!("Failed to save handler {}: {:?}", hash, e);
                 TaskLoadResult::FailedSave()
@@ -203,4 +214,49 @@ pub(crate) async fn try_pump(pool: &Pool<Postgres>, batch_size: i32) -> Result<P
         save_duration: finish.duration_since(start_save).as_millis(),
         total_duration: finish.duration_since(start_poll).as_millis(),
     })
+}
+
+/// Get Handler Spec by ID, or None.
+pub(crate) async fn get_handler_by_id(
+    pool: &Pool<Postgres>,
+    handler_id: i64,
+) -> Option<HandlerSpec> {
+    match db::handler::get_by_id(&pool, handler_id).await {
+        Ok(handler_id) => Some(handler_id),
+        Err(e) => {
+            log::error!("Didn't find handler id {}, error: {:?}", handler_id, e);
+            None
+        }
+    }
+}
+
+/// Get a page of results, plus a cursor for the next page.
+/// If filter_successful is true, only return successful results.
+pub(crate) async fn get_results(
+    pool: &Pool<Postgres>,
+    handler_id: i64,
+    cursor: i64,
+    page_size: i32,
+    filter_successful: bool,
+) -> (Vec<ExecutionResult>, i64) {
+    let results: Result<Vec<ExecutionResult>, sqlx::Error> = if filter_successful {
+        db::handler::get_success_results(pool, handler_id, cursor, page_size).await
+    } else {
+        db::handler::get_all_results(pool, handler_id, cursor, page_size).await
+    };
+
+    match results {
+        Ok(results) => {
+            let next_cursor = results.last().map(|x| x.result_id).unwrap_or(-1);
+            (results, next_cursor)
+        }
+        Err(err) => {
+            log::error!(
+                "Error retrieving results for handler id: {}, error: {:?}",
+                handler_id,
+                err
+            );
+            (vec![], -1)
+        }
+    }
 }

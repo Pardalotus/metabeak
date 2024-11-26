@@ -2,6 +2,7 @@ use metadata_assertion::crossref::{self};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
+mod api;
 mod db;
 mod event_extraction;
 mod execution;
@@ -43,6 +44,9 @@ struct Options {
 
     #[structopt(long, help("Process the entire Metadata Assertion queue to produce Events. Exit when queue is empty."))]
     extract: bool,
+
+    #[structopt(long, help("Start the API server and block."))]
+    api: bool,
 }
 
 /// Run the main function.
@@ -115,6 +119,12 @@ async fn main() {
         log::info!("Starting executor...");
         service::drain(&db_pool).await;
         log::info!("Finish executor.");
+    }
+
+    // Run API server.
+    if opt.api {
+        log::info!("Starting API server...");
+        api::run(&db_pool).await;
     }
 
     // Gracefully closing the pool avoids extraneous errors in the PostgreSQL log.

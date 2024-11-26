@@ -17,3 +17,9 @@ pub(crate) async fn get_pool() -> Result<Pool<Postgres>, sqlx::Error> {
 pub(crate) async fn close_pool(pool: &Pool<Postgres>) {
     pool.close().await
 }
+
+/// Run a query against the database to check connectivity.
+pub(crate) async fn heartbeat(pool: &sqlx::Pool<sqlx::Postgres>) -> Result<bool, sqlx::Error> {
+    let result: i32 = sqlx::query_scalar("SELECT 1;").fetch_one(pool).await?;
+    Ok(result == 1)
+}

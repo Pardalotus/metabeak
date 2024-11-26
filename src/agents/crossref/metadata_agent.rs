@@ -96,8 +96,6 @@ pub(crate) async fn pump_events(pool: &Pool<Postgres>) -> anyhow::Result<()> {
 
     let assertions = poll_assertions(10, MetadataSourceId::Crossref, &mut tx).await?;
 
-    println!("POLL: {:?}", assertions.len());
-
     tx.commit().await?;
 
     Ok(())
