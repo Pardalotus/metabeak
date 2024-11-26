@@ -1,11 +1,11 @@
-
 use axum::{
     extract::{Multipart, Path, Query, State},
     http::HeaderValue,
     response::{IntoResponse, Response},
     routing::get,
-    Json, Router,
+    Router,
 };
+use axum_extra::response::ErasedJson;
 use reqwest::{header::CONTENT_TYPE, StatusCode};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -24,7 +24,7 @@ async fn heartbeat(State(shared_state): State<Pool<Postgres>>) -> Response {
     match db::pool::heartbeat(&shared_state).await {
         Ok(result) if result => (
             StatusCode::OK,
-             axum::Json(
+             ErasedJson::pretty(
                 serde_json::json!({"heartbeat": result, "platform": "Pardalotus API", "version": VERSION}),
             ),
         ),
@@ -32,13 +32,13 @@ async fn heartbeat(State(shared_state): State<Pool<Postgres>>) -> Response {
             log::error!("Heartbeat failure: {:?}", e);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                axum::Json(serde_json::json!({"heartbeat": false, "platform": "Pardalotus API", "version": VERSION})),
+                ErasedJson::pretty(serde_json::json!({"heartbeat": false, "platform": "Pardalotus API", "version": VERSION})),
             )
         }
         _ => {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                axum::Json(serde_json::json!({"heartbeat": false, "platform": "Pardalotus API", "version": VERSION})),
+                ErasedJson::new(serde_json::json!({"heartbeat": false, "platform": "Pardalotus API", "version": VERSION})),
             )
         }
     }.into_response()
@@ -51,10 +51,14 @@ struct HandlerPage {
 
 async fn list_functions(State(shared_state): State<Pool<Postgres>>) -> Response {
     match service::list_handlers(&shared_state).await {
-        Ok(result) => (StatusCode::OK, Json(HandlerPage { results: result })).into_response(),
+        Ok(result) => (
+            StatusCode::OK,
+            ErasedJson::pretty(HandlerPage { results: result }),
+        )
+            .into_response(),
         _ => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({"error": "can't fetch handlers"})),
+            ErasedJson::pretty(serde_json::json!({"error": "can't fetch handlers"})),
         )
             .into_response(),
     }
@@ -74,17 +78,21 @@ async fn post_function(State(pool): State<Pool<Postgres>>, mut multipart: Multip
                 return match service::load_handler(&pool, &task).await {
                     service::TaskLoadResult::Exists { task_id } => (
                         StatusCode::OK,
-                        Json(serde_json::json!({"status": "already-exists", "task_id": task_id})),
+                        ErasedJson::pretty(
+                            serde_json::json!({"status": "already-exists", "task_id": task_id}),
+                        ),
                     )
                         .into_response(),
                     service::TaskLoadResult::New { task_id } => (
                         StatusCode::CREATED,
-                        Json(serde_json::json!({"status": "created", "task-id": task_id})),
+                        ErasedJson::pretty(
+                            serde_json::json!({"status": "created", "task-id": task_id}),
+                        ),
                     )
                         .into_response(),
                     service::TaskLoadResult::FailedSave() => (
                         StatusCode::BAD_REQUEST,
-                        Json(serde_json::json!({"status": "failed"})),
+                        ErasedJson::pretty(serde_json::json!({"status": "failed"})),
                     )
                         .into_response(),
                 };
@@ -94,7 +102,7 @@ async fn post_function(State(pool): State<Pool<Postgres>>, mut multipart: Multip
 
     return (
         StatusCode::BAD_REQUEST,
-        Json(serde_json::json!({"status": "failed", "reason": "No function supplied. Please check the documentation."})),
+        ErasedJson::pretty(serde_json::json!({"status": "failed", "reason": "No function supplied. Please check the documentation."})),
     )
         .into_response();
 }
@@ -104,10 +112,10 @@ async fn get_function_info(
     State(pool): State<Pool<Postgres>>,
 ) -> Response {
     match service::get_handler_by_id(&pool, handler_id).await {
-        Some(handler) => (StatusCode::OK, Json(handler)).into_response(),
+        Some(handler) => (StatusCode::OK, ErasedJson::pretty(handler)).into_response(),
         None => (
             StatusCode::NOT_FOUND,
-            Json(serde_json::json!({"error": "handler not found"})),
+            ErasedJson::pretty(serde_json::json!({"error": "handler not found"})),
         )
             .into_response(),
     }
@@ -123,13 +131,11 @@ async fn get_function_code(
             .header(CONTENT_TYPE, HeaderValue::from_static("text/javascript"))
             .body(handler.code)
             .unwrap(),
-        None => {
-            Response::builder()
-                .status(StatusCode::NOT_FOUND)
-                .header(CONTENT_TYPE, HeaderValue::from_static("text/javascript"))
-                .body(String::from(""))
-                .unwrap()
-        }
+        None => Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .header(CONTENT_TYPE, HeaderValue::from_static("text/javascript"))
+            .body(String::from(""))
+            .unwrap(),
     }
 }
 
@@ -172,7 +178,7 @@ async fn get_function_results(
         results,
         cursor: next_cursor,
     };
-    (StatusCode::OK, Json(page)).into_response()
+    (StatusCode::OK, ErasedJson::pretty(page)).into_response()
 }
 
 #[derive(Serialize)]
@@ -199,7 +205,7 @@ async fn get_function_debug(
         results,
         cursor: next_cursor,
     };
-    (StatusCode::OK, Json(page)).into_response()
+    (StatusCode::OK, ErasedJson::pretty(page)).into_response()
 }
 
 pub(crate) async fn run(pool: &Pool<Postgres>) {
