@@ -10,6 +10,7 @@ use sqlx::{Pool, Postgres, Transaction};
 pub enum HandlerState {
     Enabled = 1,
     Disabled = 2,
+    Unknown = 3,
 }
 
 /// Insert a handler function.
