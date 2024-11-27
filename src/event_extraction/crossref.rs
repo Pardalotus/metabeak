@@ -19,3 +19,55 @@ pub(crate) fn extract_events(assertion: &MetadataQueueEntry) -> Vec<Event> {
 
     results
 }
+
+#[cfg(test)]
+mod tests {
+    use std::{fs, path::PathBuf};
+
+    use crate::metadata_assertion::crossref::metadata_agent;
+
+    use super::*;
+
+    const ASSERTION_ID: i64 = 2;
+
+    /// Simulate a MetadataQueueEntry coming off the queue, reading JSON from a local file.
+    fn read_entry(path: &str, source_id: MetadataSourceId) -> MetadataQueueEntry {
+        // In normal execution this is round-tripping through the database so it's reasonable to convert to string and back.
+        let s = fs::read_to_string(&PathBuf::from(path)).unwrap();
+        let json_val = serde_json::from_str(&s).unwrap();
+        let (identifier, json) = metadata_agent::get_identifier_and_json(json_val).unwrap();
+        let (subject_id_value, subject_id_type) = identifier.to_id_string_pair();
+
+        MetadataQueueEntry {
+            source_id: source_id as i32,
+            assertion_id: ASSERTION_ID,
+            json,
+            subject_id_type: subject_id_type as i32,
+            subject_id_value,
+        }
+    }
+
+    #[test]
+    fn test_indxed() {
+        let entry = read_entry("testing/unit/crossref-1.json", MetadataSourceId::Crossref);
+        let events = extract_events(&entry);
+
+        let expected = &Event {
+            event_id: -1,
+            analyzer: EventAnalyzerId::Lifecycle,
+            source: MetadataSourceId::Crossref,
+            subject_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
+                prefix: String::from("10.33262"),
+                suffix: String::from("exploradordigital.v8i4.3221"),
+            }),
+            object_id: None,
+            assertion_id: 2,
+            json: String::from(r##"{"bytes":12861,"type":"indexed"}"##),
+        };
+
+        assert!(
+            events.contains(&expected),
+            "Expected to find 'indexed' event."
+        );
+    }
+}

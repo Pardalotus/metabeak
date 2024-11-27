@@ -46,7 +46,7 @@ pub(crate) struct HandlerSpec {
 
 /// Input data for a handler function run.
 /// The analyzer and source fields are not stored in the `json` field.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub(crate) struct Event {
     pub(crate) event_id: i64,
 
