@@ -46,7 +46,7 @@ pub(crate) struct HandlerSpec {
 
 /// Input data for a handler function run.
 /// The analyzer and source fields are not stored in the `json` field.
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub(crate) struct Event {
     pub(crate) event_id: i64,
 
@@ -66,6 +66,26 @@ pub(crate) struct Event {
     // Remainder of the JSON structure once the hydrated fields have been removed.
     // See DR-0012.
     pub(crate) json: String,
+}
+
+/// Equality based on the JSON value.
+impl PartialEq for Event {
+    fn eq(&self, other: &Self) -> bool {
+        self.event_id == other.event_id
+            && self.analyzer == other.analyzer
+            && self.source == other.source
+            && self.subject_id == other.subject_id
+            && self.object_id == other.object_id
+            && self.assertion_id == other.assertion_id
+            && if let (Ok(self_json), Ok(other_json)) = (
+                serde_json::from_str::<serde_json::Value>(&self.json),
+                serde_json::from_str::<serde_json::Value>(&other.json),
+            ) {
+                self_json == other_json
+            } else {
+                false
+            }
+    }
 }
 
 /// Map an Identifier Type to the value passed to the Handler.

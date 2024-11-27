@@ -1,0 +1,79 @@
+{
+  "indexed": {
+    "date-parts": [[2023, 10, 16]],
+    "date-time": "2023-10-16T08:20:40Z",
+    "timestamp": 1697444440027
+  },
+  "edition-number": "1",
+  "reference-count": 0,
+  "publisher": "Cambridge University Press",
+  "isbn-type": [
+    { "value": "9780521643658", "type": "print" },
+    { "value": "9780511806223", "type": "electronic" },
+    { "value": "9780521643863", "type": "print" },
+    {
+      "value": "9780521643869",
+      "type": "print",
+      "comment": "bad checksum digit"
+    }
+  ],
+  "license": [
+    {
+      "start": {
+        "date-parts": [[2018, 5, 28]],
+        "date-time": "2018-05-28T00:00:00Z",
+        "timestamp": 1527465600000
+      },
+      "content-version": "unspecified",
+      "delay-in-days": 5765,
+      "URL": "https:\/\/www.cambridge.org\/core\/terms"
+    }
+  ],
+  "content-domain": { "domain": [], "crossmark-restriction": false },
+  "short-container-title": [],
+  "published-print": { "date-parts": [[2002, 8, 15]] },
+  "DOI": "10.1017\/cbo9780511806223",
+  "type": "book",
+  "created": {
+    "date-parts": [[2018, 5, 30]],
+    "date-time": "2018-05-30T06:47:32Z",
+    "timestamp": 1527662852000
+  },
+  "source": "Crossref",
+  "is-referenced-by-count": 8,
+  "title": ["Euripides: Medea"],
+  "prefix": "10.1017",
+  "author": [{ "family": "Euripides", "sequence": "first", "affiliation": [] }],
+  "member": "56",
+  "published-online": { "date-parts": [[2018, 5, 28]] },
+  "container-title": [],
+  "original-title": [],
+  "deposited": {
+    "date-parts": [[2019, 12, 2]],
+    "date-time": "2019-12-02T20:24:30Z",
+    "timestamp": 1575318270000
+  },
+  "score": 1,
+  "resource": {
+    "primary": {
+      "URL": "https:\/\/www.cambridge.org\/core\/product\/identifier\/9780511806223\/type\/book"
+    }
+  },
+  "subtitle": [""],
+  "editor": [
+    {
+      "given": "Donald J.",
+      "family": "Mastronarde",
+      "sequence": "additional",
+      "affiliation": []
+    }
+  ],
+  "short-title": [],
+  "issued": { "date-parts": [[2002, 8, 15]] },
+  "ISBN": ["9780521643658", "9780511806223", "9780521643863"],
+  "references-count": 0,
+  "URL": "http:\/\/dx.doi.org\/10.1017\/cbo9780511806223",
+  "relation": {},
+  "subject": [],
+  "published": { "date-parts": [[2002, 8, 15]] }
+}

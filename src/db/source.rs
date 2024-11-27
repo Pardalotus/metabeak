@@ -75,10 +75,20 @@ mod metadata_source_tests {
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub(crate) enum EventAnalyzerId {
     Unknown = 0,
+    /// Test data, for internal and external testing.
     Test = 1,
+
+    /// Lifecycle of metadata systems, such as indexing.
     Lifecycle = 2,
+
+    /// Citations between artilces.
     Citation = 3,
+
+    /// Contributions, e.g. authorship
     Contribution = 4,
+
+    /// Links to other identifiers for a work
+    Identifier = 5,
 }
 
 impl EventAnalyzerId {
@@ -88,6 +98,7 @@ impl EventAnalyzerId {
             "test" => EventAnalyzerId::Test,
             "citation" => EventAnalyzerId::Citation,
             "contribution" => EventAnalyzerId::Contribution,
+            "identifier" => EventAnalyzerId::Identifier,
             _ => EventAnalyzerId::Unknown,
         }
     }
@@ -98,6 +109,7 @@ impl EventAnalyzerId {
             EventAnalyzerId::Test => "test",
             EventAnalyzerId::Citation => "citation",
             EventAnalyzerId::Contribution => "contribution",
+            EventAnalyzerId::Identifier => "identifier",
             _ => "UNKNOWN",
         })
     }
@@ -108,6 +120,7 @@ impl EventAnalyzerId {
             1 => EventAnalyzerId::Test,
             3 => EventAnalyzerId::Citation,
             4 => EventAnalyzerId::Contribution,
+            5 => EventAnalyzerId::Identifier,
             _ => EventAnalyzerId::Unknown,
         }
     }
@@ -119,7 +132,14 @@ mod event_analyzer_id_tests {
 
     #[test]
     fn roundtrip_event_analyzer_id() {
-        let inputs = ["lifecycle", "test", "citation", "contribution", "UNKNOWN"];
+        let inputs = [
+            "lifecycle",
+            "test",
+            "citation",
+            "contribution",
+            "identifier",
+            "UNKNOWN",
+        ];
         for input in inputs.iter() {
             let from_str = EventAnalyzerId::from_str_value(input);
             let as_str = from_str.to_str_value();
