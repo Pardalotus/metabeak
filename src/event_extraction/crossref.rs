@@ -131,6 +131,25 @@ mod tests {
                     json: String::from(r##"{"type":"author"}"##),
                 },
             ),
+            // This ORCID is invalid, and the checksum digit doesn't validate.
+            // Event should be recorded using the URI type, not the ORCID type.
+            (
+                "orcid-invalid",
+                Event {
+                    event_id: -1,
+                    analyzer: EventAnalyzerId::Contribution,
+                    source: MetadataSourceId::Crossref,
+                    subject_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
+                        prefix: String::from("10.33262"),
+                        suffix: String::from("exploradordigital.v8i4.3221"),
+                    }),
+                    object_id: Some(scholarly_identifiers::identifiers::Identifier::Uri(
+                        String::from("http://orcid.org/0009-0009-8606-9149"),
+                    )),
+                    assertion_id: 2,
+                    json: String::from(r##"{"type":"author"}"##),
+                },
+            ),
         ];
 
         for (label, expected) in expected_events.iter() {

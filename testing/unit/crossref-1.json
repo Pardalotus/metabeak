@@ -2,7 +2,7 @@
   "DOI": "10.33262/exploradordigital.v8i4.3221",
   "ISSN": ["2661-6831"],
   "URL": "http://dx.doi.org/10.33262/exploradordigital.v8i4.3221",
-  "abstract": "<jats:p>Introducción. La gamificación utiliza tecnologías digitales para crear juegos en ambientes lúdicos lo cual mejora la motivación y rendimiento académico. Aunque estas tecnologías educativas son efectivas su adopción en Ecuador enfrenta dificultades en especial en zonas rurales como Cotopaxi. El presente estudio explora la gamificación desde las perspectivas de capacitación, popularidad y desafíos de su implementación. Objetivo. El objetivo principal de esta investigación es analizar la relación entre la capacitación docente y la popularidad de la gamificación en instituciones fiscales de la provincia de Cotopaxi ubicados en zonas rurales de las ciudades de La Mana, Pujili y Sigchos, identificando los desafíos prominentes para su implementación efectiva en el proceso de enseñanza. Metodología.  Es uso un enfoque mixto, con un diseño no experimental. Se recopilaron datos mediante encuestas y revisión documental para analizar la capacitación, popularidad y desafíos de la gamificación en instituciones rurales de Cotopaxi. El análisis estadístico incluyó pruebas Chi-cuadrado y el coeficiente de Phi, complementado con un análisis cualitativo basado en codificación inductiva y revisión bibliográfica. Resultados. El análisis de Chi-cuadrado revelo que la diferencia significativa entre los docentes que conocen la gamificación y han recibido capacitación, los valores de Chi-cuadrado y el p-valor indican una relación estadísticamente significativa entre ambas variables. El Coeficiente de Phi indica una asociación moderada a fuerte. Además, el 69% de los docentes señaló la falta de recursos tecnológicos como la mayor dificultad para implementar la gamificación, el 20% mencionó la resistencia al cambio de los estudiantes, y el 10% la falta de tiempo para planificar actividades. Conclusión. Los resultados muestran una relación significativa entre conocer la gamificación y haber recibido capacitación para implementarla. Los docentes capacitados tienen mayor probabilidad de aplicar estas tecnologías en el aula. Los desafíos para aplicar estas tecnologías son; la falta de recursos tecnológicos, resistencia al cambio de los estudiantes y falta de tiempo para planificar actividades de gamificación. Área de estudio general: Educación. Área de estudio específica: Gamificación. Tipo de estudio:  Artículos originales.</jats:p>",
+  "abstract": "<jats:p>here is the abstract</jats:p>",
   "assertion": [
     {
       "group": {
@@ -46,6 +46,15 @@
     },
     {
       "ORCID": "http://orcid.org/0009-0009-8606-9140",
+      "affiliation": [{ "name": "Cardiff Metropolitan University" }],
+      "authenticated-orcid": false,
+      "family": "Carvajal Peñafiel",
+      "given": "Victor Andres",
+      "sequence": "additional"
+    },
+    {
+      "ORCID": "http://orcid.org/0009-0009-8606-9149",
+      "comment": "invalid ORCID",
       "affiliation": [{ "name": "Cardiff Metropolitan University" }],
       "authenticated-orcid": false,
       "family": "Carvajal Peñafiel",
