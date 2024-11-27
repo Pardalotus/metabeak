@@ -51,24 +51,6 @@
       "family": "Carvajal Peñafiel",
       "given": "Victor Andres",
       "sequence": "additional"
-    },
-    {
-      "ORCID": "http://orcid.org/0000-0002-4546-4541",
-      "affiliation": [{ "name": "Investigadora independiente" }],
-      "authenticated-orcid": false,
-      "family": "Travez Osorio",
-      "given": "Sandra Elizabeth",
-      "sequence": "additional"
-    },
-    {
-      "ORCID": "http://orcid.org/0009-0003-3266-8398",
-      "affiliation": [
-        { "name": "Unidad Educativa Digna María Beatriz Cerda Neto" }
-      ],
-      "authenticated-orcid": false,
-      "family": "Jiménez Zambrano",
-      "given": "Braulio Antonio",
-      "sequence": "additional"
     }
   ],
   "container-title": ["Explorador Digital"],

@@ -78,6 +78,7 @@ pub(crate) enum EventAnalyzerId {
     Test = 1,
     Lifecycle = 2,
     Citation = 3,
+    Contribution = 4,
 }
 
 impl EventAnalyzerId {
@@ -86,6 +87,7 @@ impl EventAnalyzerId {
             "lifecycle" => EventAnalyzerId::Lifecycle,
             "test" => EventAnalyzerId::Test,
             "citation" => EventAnalyzerId::Citation,
+            "contribution" => EventAnalyzerId::Contribution,
             _ => EventAnalyzerId::Unknown,
         }
     }
@@ -95,6 +97,7 @@ impl EventAnalyzerId {
             EventAnalyzerId::Lifecycle => "lifecycle",
             EventAnalyzerId::Test => "test",
             EventAnalyzerId::Citation => "citation",
+            EventAnalyzerId::Contribution => "contribution",
             _ => "UNKNOWN",
         })
     }
@@ -104,6 +107,7 @@ impl EventAnalyzerId {
             2 => EventAnalyzerId::Lifecycle,
             1 => EventAnalyzerId::Test,
             3 => EventAnalyzerId::Citation,
+            4 => EventAnalyzerId::Contribution,
             _ => EventAnalyzerId::Unknown,
         }
     }
@@ -115,7 +119,7 @@ mod event_analyzer_id_tests {
 
     #[test]
     fn roundtrip_event_analyzer_id() {
-        let inputs = ["lifecycle", "test", "citation", "UNKNOWN"];
+        let inputs = ["lifecycle", "test", "citation", "contribution", "UNKNOWN"];
         for input in inputs.iter() {
             let from_str = EventAnalyzerId::from_str_value(input);
             let as_str = from_str.to_str_value();
