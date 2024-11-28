@@ -11,45 +11,44 @@ pub(crate) fn extract_events(
     let mut results = vec![];
 
     if assertion.source_id == MetadataSourceId::Crossref as i32 {
-        results.push(Event {
-            event_id: -1,
-            analyzer: EventAnalyzerId::Lifecycle,
-            subject_id: Some(assertion.subject_id()),
-            object_id: None,
-            source: MetadataSourceId::from_int_value(assertion.source_id),
-            assertion_id: assertion.assertion_id,
-            json: serde_json::json!({"type": "indexed"}).to_string(),
-        });
+        if let Some(json) = maybe_json {
+            lifecycle(&mut results, assertion);
+            orcid(&json, &mut results, assertion);
+            isbn(&json, &mut results, assertion);
+            references(&json, &mut results, assertion);
+        }
     }
-
-    orcid(&maybe_json, &mut results, assertion);
-    isbn(&maybe_json, &mut results, assertion);
-
     results
 }
 
-fn orcid(
-    maybe_json: &Option<serde_json::Value>,
-    results: &mut Vec<Event>,
-    assertion: &MetadataQueueEntry,
-) {
-    if let Some(json) = maybe_json {
-        if let Some(authors) = json.get("author") {
-            if let Some(authors) = authors.as_array() {
-                for author in authors {
-                    if let Some(orcid) = author.get("ORCID") {
-                        if let Some(orcid) = orcid.as_str() {
-                            let id = Identifier::parse(orcid);
-                            results.push(Event {
-                                event_id: -1,
-                                analyzer: EventAnalyzerId::Contribution,
-                                subject_id: Some(assertion.subject_id()),
-                                object_id: Some(id),
-                                source: MetadataSourceId::from_int_value(assertion.source_id),
-                                assertion_id: assertion.assertion_id,
-                                json: serde_json::json!({"type":"author"}).to_string(),
-                            });
-                        }
+fn lifecycle(results: &mut Vec<Event>, assertion: &MetadataQueueEntry) {
+    results.push(Event {
+        event_id: -1,
+        analyzer: EventAnalyzerId::Lifecycle,
+        subject_id: Some(assertion.subject_id()),
+        object_id: None,
+        source: MetadataSourceId::from_int_value(assertion.source_id),
+        assertion_id: assertion.assertion_id,
+        json: serde_json::json!({"type": "indexed"}).to_string(),
+    });
+}
+
+fn orcid(json: &serde_json::Value, results: &mut Vec<Event>, assertion: &MetadataQueueEntry) {
+    if let Some(authors) = json.get("author") {
+        if let Some(authors) = authors.as_array() {
+            for author in authors {
+                if let Some(orcid) = author.get("ORCID") {
+                    if let Some(orcid) = orcid.as_str() {
+                        let id = Identifier::parse(orcid);
+                        results.push(Event {
+                            event_id: -1,
+                            analyzer: EventAnalyzerId::Contribution,
+                            subject_id: Some(assertion.subject_id()),
+                            object_id: Some(id),
+                            source: MetadataSourceId::from_int_value(assertion.source_id),
+                            assertion_id: assertion.assertion_id,
+                            json: serde_json::json!({"type":"author"}).to_string(),
+                        });
                     }
                 }
             }
@@ -57,35 +56,53 @@ fn orcid(
     }
 }
 
-fn isbn(
-    maybe_json: &Option<serde_json::Value>,
-    results: &mut Vec<Event>,
-    assertion: &MetadataQueueEntry,
-) {
-    if let Some(json) = maybe_json {
-        if let Some(Some(isbn_types)) = json.get("isbn-type").map(serde_json::Value::as_array) {
-            for isbn_type_entry in isbn_types {
-                if let Some(isbn_type) = isbn_type_entry
-                    .get("type")
+fn isbn(json: &serde_json::Value, results: &mut Vec<Event>, assertion: &MetadataQueueEntry) {
+    if let Some(Some(isbn_types)) = json.get("isbn-type").map(serde_json::Value::as_array) {
+        for isbn_type_entry in isbn_types {
+            if let Some(isbn_type) = isbn_type_entry
+                .get("type")
+                .map(serde_json::Value::as_str)
+                .flatten()
+            {
+                if let Some(isbn) = isbn_type_entry
+                    .get(&"value")
                     .map(serde_json::Value::as_str)
                     .flatten()
                 {
-                    if let Some(isbn) = isbn_type_entry
-                        .get(&"value")
-                        .map(serde_json::Value::as_str)
-                        .flatten()
-                    {
-                        let isbn_identifier = Identifier::parse(isbn);
+                    let isbn_identifier = Identifier::parse(isbn);
 
+                    results.push(Event {
+                        event_id: -1,
+                        analyzer: EventAnalyzerId::Identifier,
+                        subject_id: Some(assertion.subject_id()),
+                        object_id: Some(isbn_identifier),
+                        source: MetadataSourceId::from_int_value(assertion.source_id),
+                        assertion_id: assertion.assertion_id,
+                        json: serde_json::json!({"type":"has-isbn", "isbn-type": isbn_type})
+                            .to_string(),
+                    });
+                }
+            }
+        }
+    }
+}
+
+fn references(json: &serde_json::Value, results: &mut Vec<Event>, assertion: &MetadataQueueEntry) {
+    if let Some(references) = json.get("reference") {
+        if let Some(references) = references.as_array() {
+            for reference in references {
+                // If there's no DOI it's unlinked, and should be skipped.
+                if let Some(doi) = reference.get("DOI") {
+                    if let Some(doi) = doi.as_str() {
+                        let id = Identifier::parse(doi);
                         results.push(Event {
                             event_id: -1,
-                            analyzer: EventAnalyzerId::Identifier,
+                            analyzer: EventAnalyzerId::Reference,
                             subject_id: Some(assertion.subject_id()),
-                            object_id: Some(isbn_identifier),
+                            object_id: Some(id),
                             source: MetadataSourceId::from_int_value(assertion.source_id),
                             assertion_id: assertion.assertion_id,
-                            json: serde_json::json!({"type":"has-isbn", "isbn-type": isbn_type})
-                                .to_string(),
+                            json: serde_json::json!({"type":"references"}).to_string(),
                         });
                     }
                 }
@@ -331,6 +348,237 @@ mod tests {
                     )),
                     assertion_id: 2,
                     json: String::from(r##"{"type":"has-isbn","isbn-type":"print"}"##),
+                },
+            ),
+        ];
+
+        assert_contains_events(expected_events, events);
+    }
+
+    /// All linked references. No unlinked ones.
+    #[test]
+    fn test_references() {
+        let entry = read_entry(
+            "testing/unit/crossref-article.json",
+            MetadataSourceId::Crossref,
+        );
+        let events = extract_events(&entry, Some(serde_json::from_str(&entry.json).unwrap()));
+
+        let expected_events = vec![
+            (
+                "ref-1",
+                Event {
+                    event_id: -1,
+                    analyzer: EventAnalyzerId::Reference,
+                    source: MetadataSourceId::Crossref,
+                    subject_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
+                        prefix: String::from("10.33262"),
+                        suffix: String::from("exploradordigital.v8i4.3221"),
+                    }),
+                    object_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
+                        prefix: String::from("10.35381"),
+                        suffix: String::from("r.k.v5i5.1052"),
+                    }),
+                    assertion_id: 2,
+                    json: String::from(r##"{"type":"references"}"##),
+                },
+            ),
+            (
+                "ref-2",
+                Event {
+                    event_id: -1,
+                    analyzer: EventAnalyzerId::Reference,
+                    source: MetadataSourceId::Crossref,
+                    subject_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
+                        prefix: String::from("10.33262"),
+                        suffix: String::from("exploradordigital.v8i4.3221"),
+                    }),
+                    object_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
+                        prefix: String::from("10.15517"),
+                        suffix: String::from("revedu.v45i1.41009"),
+                    }),
+                    assertion_id: 2,
+                    json: String::from(r##"{"type":"references"}"##),
+                },
+            ),
+            (
+                "ref-3",
+                Event {
+                    event_id: -1,
+                    analyzer: EventAnalyzerId::Reference,
+                    source: MetadataSourceId::Crossref,
+                    subject_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
+                        prefix: String::from("10.33262"),
+                        suffix: String::from("exploradordigital.v8i4.3221"),
+                    }),
+                    object_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
+                        prefix: String::from("10.3390"),
+                        suffix: String::from("educsci12030191"),
+                    }),
+                    assertion_id: 2,
+                    json: String::from(r##"{"type":"references"}"##),
+                },
+            ),
+            (
+                "ref-4",
+                Event {
+                    event_id: -1,
+                    analyzer: EventAnalyzerId::Reference,
+                    source: MetadataSourceId::Crossref,
+                    subject_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
+                        prefix: String::from("10.33262"),
+                        suffix: String::from("exploradordigital.v8i4.3221"),
+                    }),
+                    object_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
+                        prefix: String::from("10.37811"),
+                        suffix: String::from("cl_rcm.v7i4.7011"),
+                    }),
+                    assertion_id: 2,
+                    json: String::from(r##"{"type":"references"}"##),
+                },
+            ),
+            (
+                "ref-5",
+                Event {
+                    event_id: -1,
+                    analyzer: EventAnalyzerId::Reference,
+                    source: MetadataSourceId::Crossref,
+                    subject_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
+                        prefix: String::from("10.33262"),
+                        suffix: String::from("exploradordigital.v8i4.3221"),
+                    }),
+                    object_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
+                        prefix: String::from("10.33262"),
+                        suffix: String::from("exploradordigital.v8i3.3178"),
+                    }),
+                    assertion_id: 2,
+                    json: String::from(r##"{"type":"references"}"##),
+                },
+            ),
+            (
+                "ref-6",
+                Event {
+                    event_id: -1,
+                    analyzer: EventAnalyzerId::Reference,
+                    source: MetadataSourceId::Crossref,
+                    subject_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
+                        prefix: String::from("10.33262"),
+                        suffix: String::from("exploradordigital.v8i4.3221"),
+                    }),
+                    object_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
+                        prefix: String::from("10.48082"),
+                        suffix: String::from("espacios-a21v42n08p04"),
+                    }),
+                    assertion_id: 2,
+                    json: String::from(r##"{"type":"references"}"##),
+                },
+            ),
+            (
+                "ref-7",
+                Event {
+                    event_id: -1,
+                    analyzer: EventAnalyzerId::Reference,
+                    source: MetadataSourceId::Crossref,
+                    subject_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
+                        prefix: String::from("10.33262"),
+                        suffix: String::from("exploradordigital.v8i4.3221"),
+                    }),
+                    object_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
+                        prefix: String::from("10.2307"),
+                        suffix: String::from("j.ctv2wk71sb"),
+                    }),
+                    assertion_id: 2,
+                    json: String::from(r##"{"type":"references"}"##),
+                },
+            ),
+            (
+                "ref-8",
+                Event {
+                    event_id: -1,
+                    analyzer: EventAnalyzerId::Reference,
+                    source: MetadataSourceId::Crossref,
+                    subject_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
+                        prefix: String::from("10.33262"),
+                        suffix: String::from("exploradordigital.v8i4.3221"),
+                    }),
+                    object_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
+                        prefix: String::from("10.47422"),
+                        suffix: String::from("fepol.3"),
+                    }),
+                    assertion_id: 2,
+                    json: String::from(r##"{"type":"references"}"##),
+                },
+            ),
+            (
+                "ref-9",
+                Event {
+                    event_id: -1,
+                    analyzer: EventAnalyzerId::Reference,
+                    source: MetadataSourceId::Crossref,
+                    subject_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
+                        prefix: String::from("10.33262"),
+                        suffix: String::from("exploradordigital.v8i4.3221"),
+                    }),
+                    object_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
+                        prefix: String::from("10.1007"),
+                        suffix: String::from("s10639-023-11723-7"),
+                    }),
+                    assertion_id: 2,
+                    json: String::from(r##"{"type":"references"}"##),
+                },
+            ),
+            (
+                "ref-10",
+                Event {
+                    event_id: -1,
+                    analyzer: EventAnalyzerId::Reference,
+                    source: MetadataSourceId::Crossref,
+                    subject_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
+                        prefix: String::from("10.33262"),
+                        suffix: String::from("exploradordigital.v8i4.3221"),
+                    }),
+                    object_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
+                        prefix: String::from("10.3390"),
+                        suffix: String::from("educsci14040367"),
+                    }),
+                    assertion_id: 2,
+                    json: String::from(r##"{"type":"references"}"##),
+                },
+            ),
+            (
+                "ref-11",
+                Event {
+                    event_id: -1,
+                    analyzer: EventAnalyzerId::Reference,
+                    source: MetadataSourceId::Crossref,
+                    subject_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
+                        prefix: String::from("10.33262"),
+                        suffix: String::from("exploradordigital.v8i4.3221"),
+                    }),
+                    object_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
+                        prefix: String::from("10.3390"),
+                        suffix: String::from("educsci12030179"),
+                    }),
+                    assertion_id: 2,
+                    json: String::from(r##"{"type":"references"}"##),
+                },
+            ),
+            (
+                "ref-12",
+                Event {
+                    event_id: -1,
+                    analyzer: EventAnalyzerId::Reference,
+                    source: MetadataSourceId::Crossref,
+                    subject_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
+                        prefix: String::from("10.33262"),
+                        suffix: String::from("exploradordigital.v8i4.3221"),
+                    }),
+                    object_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
+                        prefix: String::from("10.33262"),
+                        suffix: String::from("ap.v6i1.1.463"),
+                    }),
+                    assertion_id: 2,
+                    json: String::from(r##"{"type":"references"}"##),
                 },
             ),
         ];

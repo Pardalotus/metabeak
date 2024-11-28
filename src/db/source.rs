@@ -81,8 +81,8 @@ pub(crate) enum EventAnalyzerId {
     /// Lifecycle of metadata systems, such as indexing.
     Lifecycle = 2,
 
-    /// Citations between artilces.
-    Citation = 3,
+    /// Citations and references between artilces.
+    Reference = 3,
 
     /// Contributions, e.g. authorship
     Contribution = 4,
@@ -96,7 +96,7 @@ impl EventAnalyzerId {
         match value {
             "lifecycle" => EventAnalyzerId::Lifecycle,
             "test" => EventAnalyzerId::Test,
-            "citation" => EventAnalyzerId::Citation,
+            "reference" => EventAnalyzerId::Reference,
             "contribution" => EventAnalyzerId::Contribution,
             "identifier" => EventAnalyzerId::Identifier,
             _ => EventAnalyzerId::Unknown,
@@ -107,7 +107,7 @@ impl EventAnalyzerId {
         String::from(match self {
             EventAnalyzerId::Lifecycle => "lifecycle",
             EventAnalyzerId::Test => "test",
-            EventAnalyzerId::Citation => "citation",
+            EventAnalyzerId::Reference => "reference",
             EventAnalyzerId::Contribution => "contribution",
             EventAnalyzerId::Identifier => "identifier",
             _ => "UNKNOWN",
@@ -118,7 +118,7 @@ impl EventAnalyzerId {
         match value {
             2 => EventAnalyzerId::Lifecycle,
             1 => EventAnalyzerId::Test,
-            3 => EventAnalyzerId::Citation,
+            3 => EventAnalyzerId::Reference,
             4 => EventAnalyzerId::Contribution,
             5 => EventAnalyzerId::Identifier,
             _ => EventAnalyzerId::Unknown,
@@ -135,7 +135,7 @@ mod event_analyzer_id_tests {
         let inputs = [
             "lifecycle",
             "test",
-            "citation",
+            "reference",
             "contribution",
             "identifier",
             "UNKNOWN",
