@@ -1,4 +1,4 @@
-use scholarly_identifiers::identifiers::{self, Identifier};
+use scholarly_identifiers::identifiers::Identifier;
 
 use crate::db::metadata::MetadataQueueEntry;
 use crate::db::source::{EventAnalyzerId, MetadataSourceId};
@@ -121,8 +121,20 @@ mod tests {
         }
     }
 
+    fn assert_contains_events(expected_events: Vec<(&str, Event)>, events: Vec<Event>) {
+        for (label, expected) in expected_events.iter() {
+            assert!(
+                events.contains(expected),
+                "Expected to find '{}' event. Looking for {:?} in {:?}",
+                label,
+                expected,
+                events
+            );
+        }
+    }
+
     #[test]
-    fn test_article() {
+    fn test_contribution() {
         let entry = read_entry(
             "testing/unit/crossref-article.json",
             MetadataSourceId::Crossref,
@@ -131,21 +143,6 @@ mod tests {
 
         // List of events and labels for debugging.
         let expected_events = vec![
-            (
-                "lifecycle",
-                Event {
-                    event_id: -1,
-                    analyzer: EventAnalyzerId::Lifecycle,
-                    source: MetadataSourceId::Crossref,
-                    subject_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
-                        prefix: String::from("10.33262"),
-                        suffix: String::from("exploradordigital.v8i4.3221"),
-                    }),
-                    object_id: None,
-                    assertion_id: 2,
-                    json: String::from(r##"{"type":"indexed"}"##),
-                },
-            ),
             (
                 "orcid-1",
                 Event {
@@ -201,19 +198,64 @@ mod tests {
             ),
         ];
 
-        for (label, expected) in expected_events.iter() {
-            assert!(
-                events.contains(expected),
-                "Expected to find '{}' event. Looking for {:?} in {:?}",
-                label,
-                expected,
-                events
-            );
-        }
+        assert_contains_events(expected_events, events);
     }
 
     #[test]
-    fn test_book() {
+    fn test_lifecycle() {
+        let article = read_entry(
+            "testing/unit/crossref-article.json",
+            MetadataSourceId::Crossref,
+        );
+        let article_events =
+            extract_events(&article, Some(serde_json::from_str(&article.json).unwrap()));
+
+        let expected_article_events = vec![(
+            "lifecycle",
+            Event {
+                event_id: -1,
+                analyzer: EventAnalyzerId::Lifecycle,
+                source: MetadataSourceId::Crossref,
+                subject_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
+                    prefix: String::from("10.33262"),
+                    suffix: String::from("exploradordigital.v8i4.3221"),
+                }),
+                object_id: None,
+                assertion_id: 2,
+                json: String::from(r##"{"type":"indexed"}"##),
+            },
+        )];
+
+        assert_contains_events(expected_article_events, article_events);
+
+        let book = read_entry(
+            "testing/unit/crossref-book.json",
+            MetadataSourceId::Crossref,
+        );
+        let book_events = extract_events(&book, Some(serde_json::from_str(&book.json).unwrap()));
+
+        // List of events and labels for debugging.
+        let expected_book_events = vec![(
+            "lifecycle",
+            Event {
+                event_id: -1,
+                analyzer: EventAnalyzerId::Lifecycle,
+                source: MetadataSourceId::Crossref,
+                subject_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
+                    prefix: String::from("10.1017"),
+                    suffix: String::from("cbo9780511806223"),
+                }),
+                object_id: None,
+                assertion_id: 2,
+                json: String::from(r##"{"type":"indexed"}"##),
+            },
+        )];
+
+        assert_contains_events(expected_book_events, book_events);
+    }
+
+    #[test]
+    fn test_isbn() {
         let entry = read_entry(
             "testing/unit/crossref-book.json",
             MetadataSourceId::Crossref,
@@ -222,21 +264,6 @@ mod tests {
 
         // List of events and labels for debugging.
         let expected_events = vec![
-            (
-                "lifecycle",
-                Event {
-                    event_id: -1,
-                    analyzer: EventAnalyzerId::Lifecycle,
-                    source: MetadataSourceId::Crossref,
-                    subject_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
-                        prefix: String::from("10.1017"),
-                        suffix: String::from("cbo9780511806223"),
-                    }),
-                    object_id: None,
-                    assertion_id: 2,
-                    json: String::from(r##"{"type":"indexed"}"##),
-                },
-            ),
             (
                 "electronic isbn",
                 Event {
@@ -308,14 +335,6 @@ mod tests {
             ),
         ];
 
-        for (label, expected) in expected_events.iter() {
-            assert!(
-                events.contains(expected),
-                "Expected to find '{}' event. Looking for {:?} in {:?}",
-                label,
-                expected,
-                events
-            );
-        }
+        assert_contains_events(expected_events, events);
     }
 }
