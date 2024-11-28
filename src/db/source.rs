@@ -89,6 +89,9 @@ pub(crate) enum EventAnalyzerId {
 
     /// Links to other identifiers for a work
     Identifier = 5,
+
+    /// Links pointing to institutions and organisations
+    Organizations = 6,
 }
 
 impl EventAnalyzerId {
@@ -99,6 +102,7 @@ impl EventAnalyzerId {
             "reference" => EventAnalyzerId::Reference,
             "contribution" => EventAnalyzerId::Contribution,
             "identifier" => EventAnalyzerId::Identifier,
+            "organizations" => EventAnalyzerId::Organizations,
             _ => EventAnalyzerId::Unknown,
         }
     }
@@ -110,6 +114,7 @@ impl EventAnalyzerId {
             EventAnalyzerId::Reference => "reference",
             EventAnalyzerId::Contribution => "contribution",
             EventAnalyzerId::Identifier => "identifier",
+            EventAnalyzerId::Organizations => "organizations",
             _ => "UNKNOWN",
         })
     }
@@ -121,6 +126,7 @@ impl EventAnalyzerId {
             3 => EventAnalyzerId::Reference,
             4 => EventAnalyzerId::Contribution,
             5 => EventAnalyzerId::Identifier,
+            6 => EventAnalyzerId::Organizations,
             _ => EventAnalyzerId::Unknown,
         }
     }
@@ -138,6 +144,7 @@ mod event_analyzer_id_tests {
             "reference",
             "contribution",
             "identifier",
+            "organizations",
             "UNKNOWN",
         ];
         for input in inputs.iter() {

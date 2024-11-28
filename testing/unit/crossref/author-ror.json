@@ -1,0 +1,305 @@
+{
+  "indexed": {
+    "date-parts": [[2022, 4, 3]],
+    "date-time": "2022-04-03T04:32:37Z",
+    "timestamp": 1648960357623
+  },
+  "reference-count": 32,
+  "publisher": "University of Szeged",
+  "issue": "4",
+  "content-domain": { "domain": [], "crossmark-restriction": false },
+  "short-container-title": ["Electron. J. Qual. Theory Differ. Equ."],
+  "abstract": "<jats:p>We study the isolated periodic wave trains in  a class of modified generalized Burgers\u2013Huxley equation. The planar systems with\na degenerate equilibrium  arising after the traveling transformation  are  investigated. By finding certain positive definite Lyapunov functions in the neighborhood of the degenerate singular points and the Hopf bifurcation points,  the number of possible limit cycles in the corresponding planar systems is determined. The existence of isolated periodic wave trains in  the  equation is established, which is universal for any positive integer <mml:math xmlns:mml=\"http:\/\/www.w3.org\/1998\/Math\/MathML\">\n  <mml:mi>n<\/mml:mi>\n<\/mml:math> in this model. Within the process, one interesting example is obtained, namely a series of limit cycles bifurcating from a semi-hyperbolic singular point with one zero eigenvalue and one non-zero eigenvalue for its Jacobi matrix.<\/jats:p>",
+  "DOI": "10.14232\/ejqtde.2022.1.4",
+  "type": "journal-article",
+  "created": {
+    "date-parts": [[2022, 2, 4]],
+    "date-time": "2022-02-04T12:41:06Z",
+    "timestamp": 1643978466000
+  },
+  "page": "1-16",
+  "source": "Crossref",
+  "is-referenced-by-count": 0,
+  "title": [
+    "Isolated periodic wave trains in a generalized Burgers\u2013Huxley equation"
+  ],
+  "prefix": "10.14232",
+  "author": [
+    {
+      "ORCID": "http:\/\/orcid.org\/0000-0002-6176-8203",
+      "authenticated-orcid": false,
+      "given": "Qinlong",
+      "family": "Wang",
+      "sequence": "first",
+      "affiliation": [
+        { "name": "Guilin University of Electronic Technology" },
+        {
+          "id": [
+            {
+              "id": "https:\/\/ror.org\/05arjae42",
+              "id-type": "ROR",
+              "asserted-by": "publisher"
+            }
+          ],
+          "department": ["School of Mathematics and Computational Science"]
+        }
+      ]
+    },
+    {
+      "given": "Yu'e",
+      "family": "Xiong",
+      "sequence": "additional",
+      "affiliation": [
+        { "name": "Guilin University of Electronic Technology" },
+        {
+          "id": [
+            {
+              "id": "https:\/\/ror.org\/05arjae42",
+              "id-type": "ROR",
+              "asserted-by": "publisher"
+            }
+          ],
+          "department": ["School of Mathematics and Computational Science"]
+        }
+      ]
+    },
+    {
+      "ORCID": "http:\/\/orcid.org\/0000-0002-6420-3232",
+      "authenticated-orcid": false,
+      "given": "Wentao",
+      "family": "Huang",
+      "sequence": "additional",
+      "affiliation": [
+        { "name": "Guilin University of Aerospace Technology" },
+        {
+          "id": [
+            {
+              "id": "https:\/\/ror.org\/00h1gc758",
+              "id-type": "ROR",
+              "asserted-by": "publisher"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ORCID": "http:\/\/orcid.org\/0000-0002-2775-2953",
+      "authenticated-orcid": false,
+      "given": "Valery",
+      "family": "Romanovski",
+      "sequence": "additional",
+      "affiliation": [
+        { "name": "University of Maribor" },
+        {
+          "id": [
+            {
+              "id": "https:\/\/ror.org\/01d5jce07",
+              "id-type": "ROR",
+              "asserted-by": "publisher"
+            }
+          ],
+          "department": [
+            "Center for Applied Mathematics and Theoretical Physics"
+          ]
+        }
+      ]
+    }
+  ],
+  "member": "5401",
+  "published-online": { "date-parts": [[2022]] },
+  "reference": [
+    {
+      "key": "ref1",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016\/j.jmaa.2005.05.064"
+    },
+    {
+      "key": "ref2",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1090\/trans2\/008\/07"
+    },
+    {
+      "key": "ref3",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016\/S0065-2156(08)70100-5"
+    },
+    {
+      "key": "ref4",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016\/j.ajmsc.2011.08.003"
+    },
+    {
+      "key": "ref5",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1192\/bjp.126.2.127"
+    },
+    {
+      "key": "ref6",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016\/j.amc.2008.07.020"
+    },
+    {
+      "key": "ref7",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1007\/978-3-540-32902-2"
+    },
+    {
+      "key": "ref8",
+      "unstructured": "R. Fitzhugh, Mathematical models of excitation and propagation in nerve, in: H. P. Schwan (Ed.), Biological Engineering, McGraw-Hill, New York, 1969."
+    },
+    {
+      "key": "ref9",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016\/S0764-4442(00)01768-7"
+    },
+    {
+      "key": "ref10",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016\/j.mcm.2005.08.017"
+    },
+    {
+      "key": "ref11",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1113\/jphysiol.1952.sp004764"
+    },
+    {
+      "key": "ref12",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016\/j.cnsns.2019.03.003"
+    },
+    {
+      "key": "ref13",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1002\/sapm1973524291"
+    },
+    {
+      "key": "ref14",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016\/S0307-904X(00)00031-7"
+    },
+    {
+      "key": "ref15",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016\/j.jde.2018.06.027"
+    },
+    {
+      "key": "ref16",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1142\/S0218127410027210"
+    },
+    {
+      "key": "ref17",
+      "unstructured": "Y. Liu, J. Li, W. Huang, Singular point values, center problem and bifurcations of limit cycles of two dimensional differential autonomous systems, Beijing, Science Press, 2008."
+    },
+    {
+      "key": "ref18",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.11948\/2018.10"
+    },
+    {
+      "key": "ref19",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016\/0375-9601(93)90131-I"
+    },
+    {
+      "key": "ref20",
+      "unstructured": "A. M. Lyapunov, Studies of one special case of the problem of stability of motion (in Russian), in: Collected works, Akad. Nauk SSSR, Moscow, 1956, Vol. 2, pp. 272--331."
+    },
+    {
+      "key": "ref21",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016\/j.camwa.2011.04.022"
+    },
+    {
+      "key": "ref22",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1007\/s12043-014-0887-2"
+    },
+    {
+      "key": "ref23",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016\/S0960-0779(02)00645-8"
+    },
+    {
+      "key": "ref24",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016\/S0025-5564(03)00098-1"
+    },
+    {
+      "key": "ref25",
+      "unstructured": "J. Satsuma, Exact solutions of Burgers' equation with reaction terms, in: Topics in soliton theory and exactly solvable nonlinear equations (Oberwolfach, 1986), World Scientific, Singapore, 1987, pp. 255--262."
+    },
+    {
+      "key": "ref26",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016\/j.mcm.2005.08.017"
+    },
+    {
+      "key": "ref27",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016\/j.aml.2014.02.017"
+    },
+    {
+      "key": "ref28",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016\/j.jde.2021.12.006"
+    },
+    {
+      "key": "ref29",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1088\/0305-4470\/23\/3\/011"
+    },
+    {
+      "key": "ref30",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016\/S0021-8928(04)00055-3"
+    },
+    {
+      "key": "ref31",
+      "unstructured": "Z. Zhifen, D. Tongrun, et al., Qualitative theory of differential equations, Science Press, Beijing, 1985."
+    },
+    {
+      "key": "ref32",
+      "doi-asserted-by": "publisher",
+      "DOI": "10.1016\/j.na.2010.09.012"
+    }
+  ],
+  "container-title": [
+    "Electronic Journal of Qualitative Theory of Differential Equations"
+  ],
+  "original-title": [],
+  "language": "en",
+  "link": [
+    {
+      "URL": "http:\/\/www.math.u-szeged.hu\/ejqtde\/p9524.pdf",
+      "content-type": "unspecified",
+      "content-version": "vor",
+      "intended-application": "similarity-checking"
+    }
+  ],
+  "deposited": {
+    "date-parts": [[2022, 2, 4]],
+    "date-time": "2022-02-04T12:41:21Z",
+    "timestamp": 1643978481000
+  },
+  "score": 1,
+  "resource": {
+    "primary": {
+      "URL": "http:\/\/www.math.u-szeged.hu\/ejqtde\/periodica.html?periodica=1&paramtipus_ertek=publication&param_ertek=9524"
+    }
+  },
+  "subtitle": [],
+  "short-title": [],
+  "issued": { "date-parts": [[2022]] },
+  "references-count": 32,
+  "journal-issue": {
+    "issue": "4",
+    "published-online": { "date-parts": [[2022]] }
+  },
+  "URL": "http:\/\/dx.doi.org\/10.14232\/ejqtde.2022.1.4",
+  "relation": {},
+  "ISSN": ["1417-3875"],
+  "issn-type": [{ "value": "1417-3875", "type": "electronic" }],
+  "subject": [],
+  "published": { "date-parts": [[2022]] }
+}

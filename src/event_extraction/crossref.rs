@@ -14,6 +14,7 @@ pub(crate) fn extract_events(
         if let Some(json) = maybe_json {
             lifecycle(&mut results, assertion);
             orcid(&json, &mut results, assertion);
+            author_ror(&json, &mut results, assertion);
             isbn(&json, &mut results, assertion);
             references(&json, &mut results, assertion);
         }
@@ -33,22 +34,62 @@ fn lifecycle(results: &mut Vec<Event>, assertion: &MetadataQueueEntry) {
     });
 }
 
+fn get_orcid_from_author(author_json: &serde_json::Value) -> Option<Identifier> {
+    if let Some(orcid) = author_json.get("ORCID").map(|x| x.as_str()).flatten() {
+        return Some(Identifier::parse(orcid));
+    }
+
+    None
+}
+
 fn orcid(json: &serde_json::Value, results: &mut Vec<Event>, assertion: &MetadataQueueEntry) {
-    if let Some(authors) = json.get("author") {
-        if let Some(authors) = authors.as_array() {
-            for author in authors {
-                if let Some(orcid) = author.get("ORCID") {
-                    if let Some(orcid) = orcid.as_str() {
-                        let id = Identifier::parse(orcid);
-                        results.push(Event {
-                            event_id: -1,
-                            analyzer: EventAnalyzerId::Contribution,
-                            subject_id: Some(assertion.subject_id()),
-                            object_id: Some(id),
-                            source: MetadataSourceId::from_int_value(assertion.source_id),
-                            assertion_id: assertion.assertion_id,
-                            json: serde_json::json!({"type":"author"}).to_string(),
-                        });
+    if let Some(authors) = json.get("author").map(|x| x.as_array()).flatten() {
+        for author in authors {
+            if let Some(orcid) = get_orcid_from_author(author) {
+                results.push(Event {
+                    event_id: -1,
+                    analyzer: EventAnalyzerId::Contribution,
+                    subject_id: Some(assertion.subject_id()),
+                    object_id: Some(orcid),
+                    source: MetadataSourceId::from_int_value(assertion.source_id),
+                    assertion_id: assertion.assertion_id,
+                    json: serde_json::json!({"type":"author"}).to_string(),
+                });
+            }
+        }
+    }
+}
+
+fn author_ror(json: &serde_json::Value, results: &mut Vec<Event>, assertion: &MetadataQueueEntry) {
+    if let Some(authors) = json.get("author").map(|x| x.as_array()).flatten() {
+        for author in authors {
+            // ORCID may be null.
+            let orcid_uri = get_orcid_from_author(author).map(|x| x.to_uri());
+
+            if let Some(affiliations) = author.get("affiliation").map(|x| x.as_array()).flatten() {
+                for affiliation in affiliations {
+                    if let Some(ids) = affiliation.get("id").map(|x| x.as_array()).flatten() {
+                        for id in ids {
+                            if let (Some(the_id), Some(id_type)) = (
+                                id.get("id").map(|x| x.as_str()).flatten(),
+                                id.get("id-type").map(|x| x.as_str()).flatten(),
+                            ) {
+                                if id_type == "ROR" {
+                                    let ror_id = Identifier::parse(the_id);
+
+                                    results.push(Event {
+                                            event_id: -1,
+                                            analyzer: EventAnalyzerId::Organizations,
+                                            subject_id: Some(assertion.subject_id()),
+                                            object_id: Some(ror_id),
+                                            source: MetadataSourceId::from_int_value(assertion.source_id),
+                                            assertion_id: assertion.assertion_id,
+                                            json: serde_json::json!({"type":"author-ror","author":&orcid_uri})
+                                                .to_string(),
+                                        });
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -88,23 +129,21 @@ fn isbn(json: &serde_json::Value, results: &mut Vec<Event>, assertion: &Metadata
 }
 
 fn references(json: &serde_json::Value, results: &mut Vec<Event>, assertion: &MetadataQueueEntry) {
-    if let Some(references) = json.get("reference") {
-        if let Some(references) = references.as_array() {
-            for reference in references {
-                // If there's no DOI it's unlinked, and should be skipped.
-                if let Some(doi) = reference.get("DOI") {
-                    if let Some(doi) = doi.as_str() {
-                        let id = Identifier::parse(doi);
-                        results.push(Event {
-                            event_id: -1,
-                            analyzer: EventAnalyzerId::Reference,
-                            subject_id: Some(assertion.subject_id()),
-                            object_id: Some(id),
-                            source: MetadataSourceId::from_int_value(assertion.source_id),
-                            assertion_id: assertion.assertion_id,
-                            json: serde_json::json!({"type":"references"}).to_string(),
-                        });
-                    }
+    if let Some(references) = json.get("reference").map(|x| x.as_array()).flatten() {
+        for reference in references {
+            // If there's no DOI it's unlinked, and should be skipped.
+            if let Some(doi) = reference.get("DOI") {
+                if let Some(doi) = doi.as_str() {
+                    let id = Identifier::parse(doi);
+                    results.push(Event {
+                        event_id: -1,
+                        analyzer: EventAnalyzerId::Reference,
+                        subject_id: Some(assertion.subject_id()),
+                        object_id: Some(id),
+                        source: MetadataSourceId::from_int_value(assertion.source_id),
+                        assertion_id: assertion.assertion_id,
+                        json: serde_json::json!({"type":"references"}).to_string(),
+                    });
                 }
             }
         }
@@ -579,6 +618,97 @@ mod tests {
                     }),
                     assertion_id: 2,
                     json: String::from(r##"{"type":"references"}"##),
+                },
+            ),
+        ];
+
+        assert_contains_events(expected_events, events);
+    }
+
+    /// When there are authors with a ROR ID, an Event should be emitted.
+    /// ORCID id should be normalised.
+    #[test]
+    fn test_author_ror() {
+        let entry = read_entry(
+            "testing/unit/crossref/author-ror.json",
+            MetadataSourceId::Crossref,
+        );
+        let events = extract_events(&entry, Some(serde_json::from_str(&entry.json).unwrap()));
+
+        let expected_events = vec![
+            (
+                "crossref-ror-1",
+                Event {
+                    event_id: -1,
+                    analyzer: EventAnalyzerId::Organizations,
+                    source: MetadataSourceId::Crossref,
+                    subject_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
+                        prefix: String::from("10.14232"),
+                        suffix: String::from("ejqtde.2022.1.4"),
+                    }),
+                    object_id: Some(scholarly_identifiers::identifiers::Identifier::Ror(
+                        String::from("05arjae42"),
+                    )),
+                    assertion_id: 2,
+                    json: String::from(
+                        r##"{"type":"author-ror","author":"https://orcid.org/0000-0002-6176-8203"}"##,
+                    ),
+                },
+            ),
+            // No ORCID ID, but ROR present.
+            (
+                "crossref-ror-2",
+                Event {
+                    event_id: -1,
+                    analyzer: EventAnalyzerId::Organizations,
+                    source: MetadataSourceId::Crossref,
+                    subject_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
+                        prefix: String::from("10.14232"),
+                        suffix: String::from("ejqtde.2022.1.4"),
+                    }),
+                    object_id: Some(scholarly_identifiers::identifiers::Identifier::Ror(
+                        String::from("05arjae42"),
+                    )),
+                    assertion_id: 2,
+                    json: String::from(r##"{"type":"author-ror","author":null}"##),
+                },
+            ),
+            (
+                "crossref-ror-3",
+                Event {
+                    event_id: -1,
+                    analyzer: EventAnalyzerId::Organizations,
+                    source: MetadataSourceId::Crossref,
+                    subject_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
+                        prefix: String::from("10.14232"),
+                        suffix: String::from("ejqtde.2022.1.4"),
+                    }),
+                    object_id: Some(scholarly_identifiers::identifiers::Identifier::Ror(
+                        String::from("00h1gc758"),
+                    )),
+                    assertion_id: 2,
+                    json: String::from(
+                        r##"{"type":"author-ror","author":"https://orcid.org/0000-0002-6420-3232"}"##,
+                    ),
+                },
+            ),
+            (
+                "crossref-ror-4",
+                Event {
+                    event_id: -1,
+                    analyzer: EventAnalyzerId::Organizations,
+                    source: MetadataSourceId::Crossref,
+                    subject_id: Some(scholarly_identifiers::identifiers::Identifier::Doi {
+                        prefix: String::from("10.14232"),
+                        suffix: String::from("ejqtde.2022.1.4"),
+                    }),
+                    object_id: Some(scholarly_identifiers::identifiers::Identifier::Ror(
+                        String::from("01d5jce07"),
+                    )),
+                    assertion_id: 2,
+                    json: String::from(
+                        r##"{"type":"author-ror","author":"https://orcid.org/0000-0002-2775-2953"}"##,
+                    ),
                 },
             ),
         ];
