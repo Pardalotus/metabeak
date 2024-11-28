@@ -1,0 +1,256 @@
+{
+  "DOI": "10.33262/exploradordigital.v8i4.3221",
+  "ISSN": ["2661-6831"],
+  "URL": "http://dx.doi.org/10.33262/exploradordigital.v8i4.3221",
+  "abstract": "<jats:p>here is the abstract</jats:p>",
+  "assertion": [
+    {
+      "group": {
+        "label": "Publication History",
+        "name": "publication_history"
+      },
+      "label": "Received",
+      "name": "received",
+      "order": 0,
+      "value": "2024-8-13"
+    },
+    {
+      "group": {
+        "label": "Publication History",
+        "name": "publication_history"
+      },
+      "label": "Accepted",
+      "name": "accepted",
+      "order": 1,
+      "value": "2024-10-1"
+    },
+    {
+      "group": {
+        "label": "Publication History",
+        "name": "publication_history"
+      },
+      "label": "Published Online",
+      "name": "published_online",
+      "order": 2,
+      "value": "2024-10-28"
+    }
+  ],
+  "author": [
+    {
+      "ORCID": "http://orcid.org/0009-0005-5061-2894",
+      "affiliation": [{ "name": "Unidad Educativa Quito Sur" }],
+      "authenticated-orcid": false,
+      "family": "Basantes Vinueza",
+      "given": "Beatriz del Carmen",
+      "sequence": "first"
+    },
+    {
+      "ORCID": "http://orcid.org/0009-0009-8606-9140",
+      "affiliation": [{ "name": "Cardiff Metropolitan University" }],
+      "authenticated-orcid": false,
+      "family": "Carvajal Peñafiel",
+      "given": "Victor Andres",
+      "sequence": "additional"
+    },
+    {
+      "ORCID": "http://orcid.org/0009-0009-8606-9149",
+      "comment": "invalid ORCID",
+      "affiliation": [{ "name": "Cardiff Metropolitan University" }],
+      "authenticated-orcid": false,
+      "family": "Carvajal Peñafiel",
+      "given": "Victor Andres",
+      "sequence": "additional"
+    }
+  ],
+  "container-title": ["Explorador Digital"],
+  "content-domain": { "crossmark-restriction": false, "domain": [] },
+  "created": {
+    "date-parts": [[2024, 10, 29]],
+    "date-time": "2024-10-29T14:00:08Z",
+    "timestamp": 1730210408000
+  },
+  "deposited": {
+    "date-parts": [[2024, 11, 22]],
+    "date-time": "2024-11-22T22:25:23Z",
+    "timestamp": 1732314323000
+  },
+  "indexed": {
+    "date-parts": [[2024, 11, 22]],
+    "date-time": "2024-11-22T22:40:23Z",
+    "timestamp": 1732315223302,
+    "version": "3.28.0"
+  },
+  "is-referenced-by-count": 0,
+  "issn-type": [{ "type": "electronic", "value": "2661-6831" }],
+  "issue": "4",
+  "issued": { "date-parts": [[2024, 10, 28]] },
+  "journal-issue": {
+    "issue": "4",
+    "published-online": { "date-parts": [[2024, 10, 5]] }
+  },
+  "language": "es",
+  "license": [
+    {
+      "URL": "http://creativecommons.org/licenses/by-nc-sa/4.0",
+      "content-version": "unspecified",
+      "delay-in-days": 0,
+      "start": {
+        "date-parts": [[2024, 10, 28]],
+        "date-time": "2024-10-28T00:00:00Z",
+        "timestamp": 1730073600000
+      }
+    }
+  ],
+  "link": [
+    {
+      "URL": "https://cienciadigital.org/revistacienciadigital2/index.php/exploradordigital/article/download/3221/8992",
+      "content-type": "application/pdf",
+      "content-version": "vor",
+      "intended-application": "text-mining"
+    },
+    {
+      "URL": "https://cienciadigital.org/revistacienciadigital2/index.php/exploradordigital/article/download/3221/8993",
+      "content-type": "text/plain",
+      "content-version": "vor",
+      "intended-application": "text-mining"
+    },
+    {
+      "URL": "https://cienciadigital.org/revistacienciadigital2/index.php/exploradordigital/article/download/3221/8992",
+      "content-type": "unspecified",
+      "content-version": "vor",
+      "intended-application": "similarity-checking"
+    }
+  ],
+  "member": "18776",
+  "page": "32-45",
+  "prefix": "10.33262",
+  "published": { "date-parts": [[2024, 10, 28]] },
+  "published-online": { "date-parts": [[2024, 10, 28]] },
+  "publisher": "Editorial Ciencia Digital",
+  "reference": [
+    {
+      "key": "ref0",
+      "unstructured": "Agresti, A., & Finlay, B. (2009). Statistical methods for social sciences. Pearson Prentice Hall. https://www.google.com.ec/books/edition/Statistical_Methods_for_the_Social_Scien/FMXaAAAAMAAJ?hl=es-419&gbpv=0&bsq=Statistical%20Methods%20for%20the%20Social%20Sciences"
+    },
+    {
+      "DOI": "10.35381/r.k.v5i5.1052",
+      "doi-asserted-by": "publisher",
+      "key": "ref1",
+      "unstructured": "Aguirre-Herráez, R. G., Guevara-Vizcaíno, C. F., Erazo-Álvarez, J. C., & García Herrera, D. G. (2020). Realidad aumentada y educación en el Ecuador. Revista Arbitrada Interdisciplinaria Koinonía, 5(5), 415-438. https://dialnet.unirioja.es/servlet/articulo?codigo=7696078"
+    },
+    {
+      "DOI": "10.15517/revedu.v45i1.41009",
+      "doi-asserted-by": "publisher",
+      "key": "ref2",
+      "unstructured": "Amores Torres, J. L., & Ramos Serpa, G. (2020). Limitaciones del modelo constructivista en la enseñanza-aprendizaje de la Unidad Educativa Salcedo, Ecuador. Revista Educación, 45(1), 36–51. https://doi.org/10.15517/revedu.v45i1.41009"
+    },
+    {
+      "DOI": "10.3390/educsci12030191",
+      "doi-asserted-by": "publisher",
+      "key": "ref3",
+      "unstructured": "Araújo, I., & Carvalho, A. A. (2022). Enablers and difficulties in the implementation of gamification: a case study with teachers. Education Sciences, 12(3), 191. https://doi.org/10.3390/educsci12030191"
+    },
+    {
+      "key": "ref4",
+      "unstructured": "Bryman, A. (2012). Social research methods (4ª ed.). Oxford University Press. https://www.google.com.ec/books/edition/Social_Research_Methods/vCq5m2hPkOMC?hl=es-419&gbpv=0"
+    },
+    {
+      "DOI": "10.37811/cl_rcm.v7i4.7011",
+      "doi-asserted-by": "publisher",
+      "key": "ref5",
+      "unstructured": "Caraballo Padilla, Y. Y. (2023). Gamificación educativa y su impacto en la enseñanza y aprendizaje del idioma inglés: un análisis de la literatura científica. Ciencia Latina Revista Científica Multidisciplinar, 7(4), 1813-1830. https://doi.org/10.37811/cl_rcm.v7i4.7011"
+    },
+    {
+      "DOI": "10.33262/exploradordigital.v8i3.3178",
+      "doi-asserted-by": "publisher",
+      "key": "ref6",
+      "unstructured": "Carvajal Peñafiel, V. A., Gallegos Velásquez, D. E., Cruz Morales, C. M., & Trávez Osorio, S. E. (2024). Impacto transversal de la gamificación en el proceso de enseñanza aprendizaje en diversos niveles educativos y experiencia docente. Explorador Digital, 8(3), 201-217. https://doi.org/10.33262/exploradordigital.v8i3.3178"
+    },
+    {
+      "DOI": "10.48082/espacios-a21v42n08p04",
+      "doi-asserted-by": "publisher",
+      "key": "ref7",
+      "unstructured": "Coral Montanchez, S. J. (2024). Cerebriti para la enseñanza de la estructura celular de la materia de ciencias naturales [Tesis de maestría, Universidad Politécnica Estatal del Carchi, Ecuador]. http://repositorio.upec.edu.ec/handle/123456789/2485"
+    },
+    {
+      "key": "ref8",
+      "unstructured": "Creswell, J. W., & Creswell, J. D. (2017). Research design: qualitative, quantitative, and mixed methods approaches. SAGE Publications. https://www.google.com.ec/books/edition/Research_Design/335ZDwAAQBAJ?hl=es-419&gbpv=0"
+    },
+    {
+      "key": "ref9",
+      "unstructured": "Coombe, C., & Dean Brown, J. (editores). (2015). The Cambridge Guide to Research in Language Teaching and Learning. Cambridge University Press. https://www.google.com.ec/books/edition/The_Cambridge_Guide_to_Research_in_Langu/cqGNCgAAQBAJ?hl=es-419&gbpv=0"
+    },
+    {
+      "DOI": "10.2307/j.ctv2wk71sb",
+      "doi-asserted-by": "publisher",
+      "key": "ref10",
+      "unstructured": "Díaz Rodríguez, M. (2022). Estadística inferencial aplicada.: Segunda edición revisada y aumentada. Editorial Universidad del Norte. https://www.google.com.ec/books/edition/Estad%C3%ADstica_inferencial_aplicada/IHCHEAAAQBAJ?hl=es-419&gbpv=1&dq=Prueba+Chi cuadrado&pg=PA222&printsec=frontcover"
+    },
+    {
+      "DOI": "10.47422/fepol.3",
+      "doi-asserted-by": "publisher",
+      "key": "ref11",
+      "unstructured": "Flores Limo, F. A. & Mora Santiago, R. J. (2023). Investigación cualitativa (1ra edición). Editorial Universitaria de la Universidad Nacional de Educación Enrique Guzmán y Valle. https://es.scribd.com/document/663547381/Investigacion-cualitativa-OK-FERNANDO-ANTONIO-FLORES-LIMO"
+    },
+    {
+      "key": "ref12",
+      "unstructured": "Hernández Sampieri, R., Fernández Collado, C., Baptista Lucio, P., Méndez Valencia, S., & Mendoza Torres, C. P. (2014). Metodología de la investigación. McGraw-Hill. https://www.google.com.ec/books/edition/Metodolog%C3%ADa_de_la_investigaci%C3%B3n/SJR2zgEACAAJ?hl=es-419"
+    },
+    {
+      "DOI": "10.1007/s10639-023-11723-7",
+      "doi-asserted-by": "publisher",
+      "key": "ref13",
+      "unstructured": "Kabilan, M. K., Annamalai, N., & Chuah, K. M. (2023). Practices, purposes and challenges in integrating gamification using technology: a mixed-methods study on university academics. Education and Information Technologies, 28, 14249–14281. https://doi.org/10.1007/s10639-023-11723-7"
+    },
+    {
+      "key": "ref14",
+      "unstructured": "Kerlinger, F. N. (2002). Investigación del comportamiento. McGraw-Hill.  https://www.sidalc.net/search/Record/KOHA-OAI-TEST:43649/Description"
+    },
+    {
+      "DOI": "10.3390/educsci14040367",
+      "doi-asserted-by": "publisher",
+      "key": "ref15",
+      "unstructured": "Lampropoulos, G., & Sidiropoulos, A. (2024). Impact of gamification on students’ learning outcomes and academic performance: A longitudinal study comparing online, traditional, and gamified learning. Education Sciences, 14(4), 367. https://doi.org/10.3390/educsci14040367"
+    },
+    {
+      "DOI": "10.3390/educsci12030179",
+      "doi-asserted-by": "publisher",
+      "key": "ref16",
+      "unstructured": "Piñero Charlo, J. C., Costado Dios, M. T., Carmona Medeiro, E., & Lloret, F. (2022). Trends on educational gamification: Challenges and learning opportunities. MDPI-Multidisciplinary Digital Publishing Institute. https://www.mdpi.com/journal/education/special_issues/Trends_Educational_Gamification"
+    },
+    {
+      "key": "ref17",
+      "unstructured": "Sattler, J. M. (2009). Evaluación infantil: Fundamentos cognitivos Vol. I. Editorial El Manual Moderno. https://www.google.com.ec/books/edition/Evaluaci%C3%B3n_infantil/o8jHCQAAQBAJ?hl=es-419&gbpv=0"
+    },
+    {
+      "DOI": "10.33262/ap.v6i1.1.463",
+      "doi-asserted-by": "publisher",
+      "key": "ref18",
+      "unstructured": "Trávez Osorio, S. E., Ocaña Pañora, L. S., Trávez Osorio, G. M., & Moreno Moreno, W. Y. (2024). Desvelando la realidad: condiciones laborales y riesgos ocupacionales en docentes de zonas rurales en Ecuador a través del cuestionario fantástico. Alfa Publicaciones, 6(1.1), 192–214. https://doi.org/10.33262/ap.v6i1.1.463"
+    },
+    {
+      "key": "ref19",
+      "unstructured": "Trochim, W., Donnelly, J., Arora, K., Trochim., Donnelly. (2014). Research methods: the essential knowledge base. Cengage Learning. https://www.google.com.ec/books/edition/Research_Methods_The_Essential_Knowledge/gFdfzgEACAAJ?hl=es-419"
+    },
+    {
+      "key": "ref20",
+      "unstructured": "Yin, R. K. (2017). Case study research and applications: design and methods. SAGE Publications. https://www.google.com.ec/books/edition/Case_Study_Research_and_Applications/6DwmDwAAQBAJ?hl=es-419&gbpv=0"
+    }
+  ],
+  "reference-count": 21,
+  "references-count": 21,
+  "resource": {
+    "primary": {
+      "URL": "https://cienciadigital.org/revistacienciadigital2/index.php/exploradordigital/article/view/3221"
+    }
+  },
+  "score": 0.0,
+  "short-container-title": ["EX"],
+  "source": "Crossref",
+  "title": [
+    "Gamificación: capacitación y popularidad; desafíos existentes en su implementación dentro del aula en instituciones educativas en las zonas rurales de Ecuador"
+  ],
+  "type": "journal-article",
+  "update-policy": "http://dx.doi.org/10.33262/exploradordigital.crossmark",
+  "volume": "8"
+}

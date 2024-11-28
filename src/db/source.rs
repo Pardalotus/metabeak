@@ -75,9 +75,23 @@ mod metadata_source_tests {
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub(crate) enum EventAnalyzerId {
     Unknown = 0,
+    /// Test data, for internal and external testing.
     Test = 1,
+
+    /// Lifecycle of metadata systems, such as indexing.
     Lifecycle = 2,
-    Citation = 3,
+
+    /// Citations and references between artilces.
+    Reference = 3,
+
+    /// Contributions, e.g. authorship
+    Contribution = 4,
+
+    /// Links to other identifiers for a work
+    Identifier = 5,
+
+    /// Links pointing to institutions and organisations
+    Organizations = 6,
 }
 
 impl EventAnalyzerId {
@@ -85,7 +99,10 @@ impl EventAnalyzerId {
         match value {
             "lifecycle" => EventAnalyzerId::Lifecycle,
             "test" => EventAnalyzerId::Test,
-            "citation" => EventAnalyzerId::Citation,
+            "reference" => EventAnalyzerId::Reference,
+            "contribution" => EventAnalyzerId::Contribution,
+            "identifier" => EventAnalyzerId::Identifier,
+            "organizations" => EventAnalyzerId::Organizations,
             _ => EventAnalyzerId::Unknown,
         }
     }
@@ -94,7 +111,10 @@ impl EventAnalyzerId {
         String::from(match self {
             EventAnalyzerId::Lifecycle => "lifecycle",
             EventAnalyzerId::Test => "test",
-            EventAnalyzerId::Citation => "citation",
+            EventAnalyzerId::Reference => "reference",
+            EventAnalyzerId::Contribution => "contribution",
+            EventAnalyzerId::Identifier => "identifier",
+            EventAnalyzerId::Organizations => "organizations",
             _ => "UNKNOWN",
         })
     }
@@ -103,7 +123,10 @@ impl EventAnalyzerId {
         match value {
             2 => EventAnalyzerId::Lifecycle,
             1 => EventAnalyzerId::Test,
-            3 => EventAnalyzerId::Citation,
+            3 => EventAnalyzerId::Reference,
+            4 => EventAnalyzerId::Contribution,
+            5 => EventAnalyzerId::Identifier,
+            6 => EventAnalyzerId::Organizations,
             _ => EventAnalyzerId::Unknown,
         }
     }
@@ -115,7 +138,15 @@ mod event_analyzer_id_tests {
 
     #[test]
     fn roundtrip_event_analyzer_id() {
-        let inputs = ["lifecycle", "test", "citation", "UNKNOWN"];
+        let inputs = [
+            "lifecycle",
+            "test",
+            "reference",
+            "contribution",
+            "identifier",
+            "organizations",
+            "UNKNOWN",
+        ];
         for input in inputs.iter() {
             let from_str = EventAnalyzerId::from_str_value(input);
             let as_str = from_str.to_str_value();

@@ -2,10 +2,10 @@
 
 use std::sync::mpsc::{self, Receiver, Sender};
 
+use scholarly_identifiers::identifiers::Identifier;
 use sqlx::{Pool, Postgres, Transaction};
 
 use time::{Duration, OffsetDateTime};
-
 
 use crate::db::agents::get_checkpoint;
 use crate::db::agents::set_checkpoint;
@@ -37,6 +37,24 @@ pub(crate) async fn pump_metadata(pool: &Pool<Postgres>) -> anyhow::Result<()> {
     Ok(())
 }
 
+pub(crate) fn get_identifier_and_json(
+    json_value: serde_json::Value,
+) -> Option<(Identifier, String)> {
+    if let Some(doi) = &json_value["DOI"].as_str() {
+        // Normalise and identify the type of the identifier.
+        // For Crossref records, this will be the DOI type ID.
+        let identifier = scholarly_identifiers::identifiers::Identifier::parse(doi);
+
+        if let Ok(json_value) = serde_json::to_string(&json_value) {
+            Some((identifier, json_value))
+        } else {
+            None
+        }
+    } else {
+        None
+    }
+}
+
 /// Harvest data until the given date, returning the index date of the most recent.
 /// If none were retrieved, the `after` date is returned, so it can be attepmted again next time.
 pub(crate) async fn harvest<'a>(
@@ -60,26 +78,20 @@ pub(crate) async fn harvest<'a>(
         if let Some(indexed) = get_index_date(&item) {
             latest_date = indexed.max(latest_date);
 
-            if let Some(doi) = &item["DOI"].as_str() {
-                // Normalise and identify the type of the identifier.
-                // For Crossref records, this will be the DOI type ID.
-                let identifier = scholarly_identifiers::identifiers::Identifier::parse(doi);
-
-                if let Ok(json) = serde_json::to_string(&item) {
-                    count += 1;
-                    if (count % 1000) == 0 {
-                        log::debug!("Done {} items.", count);
-                    }
-
-                    assert_metadata(
-                        &identifier,
-                        &json,
-                        crate::db::source::MetadataSourceId::Crossref,
-                        tx,
-                        pool,
-                    )
-                    .await?;
+            if let Some((identifier, json)) = get_identifier_and_json(item) {
+                count += 1;
+                if (count % 1000) == 0 {
+                    log::debug!("Done {} items.", count);
                 }
+
+                assert_metadata(
+                    &identifier,
+                    &json,
+                    crate::db::source::MetadataSourceId::Crossref,
+                    tx,
+                    pool,
+                )
+                .await?;
             }
         }
     }

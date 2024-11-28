@@ -60,7 +60,13 @@ fn metadata_assertions_to_events(assertions: Vec<MetadataQueueEntry>) -> Vec<Eve
     let mut results = vec![];
 
     for assertion in assertions {
-        let mut events = crossref::extract_events(&assertion);
+        // There's no guarantee that the input will be JSON, depending on where it came from.
+        // But parse this outside the handlers, else it forces each one to repeatedly deserialize.
+        let json = match serde_json::from_str(&assertion.json) {
+            Ok(json) => Some(json),
+            Err(_) => None,
+        };
+        let mut events = crossref::extract_events(&assertion, json);
         results.append(&mut events);
     }
 

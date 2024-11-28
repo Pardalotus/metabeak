@@ -68,6 +68,26 @@ pub(crate) struct Event {
     pub(crate) json: String,
 }
 
+/// Equality based on the JSON value.
+impl PartialEq for Event {
+    fn eq(&self, other: &Self) -> bool {
+        self.event_id == other.event_id
+            && self.analyzer == other.analyzer
+            && self.source == other.source
+            && self.subject_id == other.subject_id
+            && self.object_id == other.object_id
+            && self.assertion_id == other.assertion_id
+            && if let (Ok(self_json), Ok(other_json)) = (
+                serde_json::from_str::<serde_json::Value>(&self.json),
+                serde_json::from_str::<serde_json::Value>(&other.json),
+            ) {
+                self_json == other_json
+            } else {
+                false
+            }
+    }
+}
+
 /// Map an Identifier Type to the value passed to the Handler.
 fn identifier_type_string(identifier: &Identifier) -> serde_json::Value {
     serde_json::Value::String(String::from(match identifier {
