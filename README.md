@@ -14,6 +14,8 @@ Drop and create DB:
 Load sample events and handlers:
 
 ```sh
+export DB_URI=postgres://metabeak:metabeak@localhost/metabeak
+
 cargo run -- --load-events samples/events --load-handlers samples/handlers --execute-one
 ```
 

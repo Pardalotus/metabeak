@@ -1,9 +1,9 @@
 use metadata_assertion::crossref::{self};
 use std::path::PathBuf;
+use std::{env, process::exit};
 use structopt::StructOpt;
 use time::{format_description::well_known::Iso8601, OffsetDateTime};
 use tokio::task::JoinSet;
-
 mod api;
 mod db;
 mod event_extraction;
@@ -68,8 +68,14 @@ async fn main() {
 
     let opt = Options::from_args();
 
+    let uri = env::var("DB_URI");
+    if let Err(_) = uri {
+        log::error!("DB_URI not supplied");
+        exit(1);
+    }
+
     // Boot the database.
-    let db_pool = db::pool::get_pool().await.unwrap();
+    let db_pool = db::pool::get_pool(uri.unwrap()).await.unwrap();
 
     // Boot the v8 environment, as it's used in both validation and execution of functions.
     execution::run::init();

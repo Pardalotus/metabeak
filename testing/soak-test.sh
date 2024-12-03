@@ -5,6 +5,9 @@ set -e
 
 cargo build
 
+export DB_URI=postgres://metabeak:metabeak@localhost/metabeak
+
+
 target/debug/metabeak --load-handlers samples/handlers/
 
 FILE=testing/`date -Iminutes`-soak.log

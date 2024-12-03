@@ -580,6 +580,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "env"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b77e76980e898f2edbc8e26f1182b006a850def7df4fef09b6661f469039939"
+
+[[package]]
 name = "env_filter"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1675,6 +1681,7 @@ dependencies = [
  "axum",
  "axum-extra",
  "backon",
+ "env",
  "env_logger",
  "itertools",
  "log 0.4.22",

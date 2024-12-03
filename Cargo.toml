@@ -34,3 +34,4 @@ backon = "1.2.0"
 anyhow = "1.0.93"
 axum = { version = "0.7.9", features = ["json", "multipart"] }
 axum-extra = { version = "0.9.6", features = ["erased-json"] }
+env = "0.1.0"
