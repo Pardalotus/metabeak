@@ -1,6 +1,8 @@
 use metadata_assertion::crossref::{self};
 use std::path::PathBuf;
 use structopt::StructOpt;
+use time::{format_description::well_known::Iso8601, OffsetDateTime};
+use tokio::task::JoinSet;
 
 mod api;
 mod db;
@@ -41,6 +43,12 @@ struct Options {
         help("Fetch all Crossref metadata assertions since the last run.")
     )]
     fetch_crossref: bool,
+
+    #[structopt(
+        long,
+        help("Fetch all Crossref metadata assertions since given date as secondary metadata assertions (i.e. does not trigger events).")
+    )]
+    fetch_crossref_secondary: Option<String>,
 
     #[structopt(long, help("Process the entire Metadata Assertion queue to produce Events. Exit when queue is empty."))]
     extract: bool,
@@ -92,7 +100,7 @@ async fn main() {
 
     if opt.fetch_crossref {
         log::info!("Poll Crossref for new metadata...");
-        match crossref::metadata_agent::pump_metadata(&db_pool).await {
+        match crossref::metadata_agent::poll_newly_indexed_data(&db_pool).await {
             Ok(_) => {
                 log::info!("Finished polling Crossref for metadata.");
             }
@@ -102,16 +110,54 @@ async fn main() {
         }
     }
 
-    if opt.extract {
-        log::info!("Processing metadata to extract events...");
-        match event_extraction::service::drain(&db_pool).await {
-            Ok(_) => {
-                log::info!("Finished extracting events.");
+    if let Some(ref date) = opt.fetch_crossref_secondary {
+        log::info!(
+            "Poll Crossref for secondary metadata assertions since {}...",
+            date
+        );
+
+        if let Ok(date) = time::Date::parse(&date, &Iso8601::DATE) {
+            let after =
+                OffsetDateTime::new_in_offset(date, time::Time::MIDNIGHT, time::UtcOffset::UTC);
+
+            match crossref::metadata_agent::fetch_secondary_metadata_after(&db_pool, after).await {
+                Ok(_) => {
+                    log::info!("Finished polling Crossref for secondary metadata.");
+                }
+                Err(e) => {
+                    log::error!("Error polling Crossref for secondary metadata: {:?}", e);
+                }
             }
-            Err(e) => {
-                log::error!("Error extracting events: {:?}", e);
-            }
+        } else {
+            log::error!(
+                "Failed to parse date {:?}",
+                OffsetDateTime::parse(&date, &Iso8601::DATE)
+            );
         }
+    }
+
+    if opt.extract {
+        let mut set = JoinSet::new();
+
+        for i in 0..5 {
+            log::info!("Start extract task {}", i);
+            let db_pool = db_pool.clone();
+            set.spawn(async move {
+                log::info!("Processing metadata to extract events...");
+                match event_extraction::service::drain(&db_pool).await {
+                    Ok(_) => {
+                        log::info!("Finished extracting events.");
+                    }
+                    Err(e) => {
+                        log::error!("Error extracting events: {:?}", e);
+                    }
+                };
+            });
+        }
+
+        log::info!("Wait for extract tasks to complete.");
+        set.join_all().await;
+        log::info!("All extract tasks complete.");
     }
 
     // Run executor.
