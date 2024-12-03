@@ -5,7 +5,12 @@
 pub(crate) enum MetadataSourceId {
     Unknown = 0,
     Test = 1,
+
+    /// Direct from Crossref
     Crossref = 2,
+
+    /// Retrieved from the relevant RA by content negotiation. This might be Crossref, DataCite or others.
+    ContentNegotiation = 3,
 }
 
 impl MetadataSourceId {
@@ -13,6 +18,7 @@ impl MetadataSourceId {
         match value {
             "crossref" => MetadataSourceId::Crossref,
             "test" => MetadataSourceId::Test,
+            "content-negotiation" => MetadataSourceId::ContentNegotiation,
             _ => MetadataSourceId::Unknown,
         }
     }
@@ -21,6 +27,7 @@ impl MetadataSourceId {
         match value {
             2 => MetadataSourceId::Crossref,
             1 => MetadataSourceId::Test,
+            3 => MetadataSourceId::ContentNegotiation,
             _ => MetadataSourceId::Unknown,
         }
     }
@@ -28,6 +35,7 @@ impl MetadataSourceId {
     pub(crate) fn to_str_value(self) -> String {
         String::from(match self {
             MetadataSourceId::Crossref => "crossref",
+            MetadataSourceId::ContentNegotiation => "content-negotiation",
             MetadataSourceId::Test => "test",
             _ => "UNKNOWN",
         })
@@ -40,7 +48,7 @@ mod metadata_source_tests {
 
     #[test]
     fn roundtrip_metadatasource() {
-        let inputs = ["crossref", "test"];
+        let inputs = ["crossref", "test", "content-negotiation"];
         for input in inputs.iter() {
             let from_str = MetadataSourceId::from_str_value(input);
             let as_str = from_str.to_str_value();

@@ -1,7 +1,7 @@
 //! Service functions for metadata assertion agents to use.
 
 use scholarly_identifiers::identifiers::Identifier;
-use sqlx::{Pool, Postgres, Transaction};
+use sqlx::{Pool, Postgres};
 
 use crate::{
     db::{self, metadata::MetadataAssertionReason, source::MetadataSourceId},
@@ -14,7 +14,7 @@ pub(crate) async fn assert_metadata<'a>(
     subject: &Identifier,
     metadata_json: &str,
     source: MetadataSourceId,
-    tx: &mut Transaction<'a, Postgres>,
+    reason: MetadataAssertionReason,
     pool: &Pool<Postgres>,
 ) -> Result<(), sqlx::Error> {
     // Do this out of transaction so it's idempotent and compatible with other concurrent transactions.
@@ -22,16 +22,18 @@ pub(crate) async fn assert_metadata<'a>(
     let subject_id = db::entity::resolve_identifier(subject, pool).await?;
 
     let hash = hash_data(metadata_json);
+    let mut tx = pool.begin().await?;
 
     db::metadata::insert_metadata_assertion(
         metadata_json,
         source,
         subject_id,
         &hash,
-        MetadataAssertionReason::Primary,
-        tx,
+        reason,
+        &mut tx,
     )
     .await?;
+    tx.commit().await?;
 
     Ok(())
 }

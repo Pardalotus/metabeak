@@ -1,7 +1,6 @@
 //! Service functions for event extraction.
 
-use sqlx::Pool;
-use sqlx::Postgres;
+use sqlx::{Pool, Postgres};
 
 use crate::db::entity::resolve_identifier;
 use crate::db::event::insert_event;
@@ -10,11 +9,23 @@ use crate::db::metadata::poll_assertions;
 use crate::db::metadata::MetadataQueueEntry;
 use crate::event_extraction::crossref;
 use crate::execution::model::Event;
+use crate::metadata_assertion;
 
-const BATCH_SIZE: i32 = 100;
+const BATCH_SIZE: i32 = 1;
 
-/// Poll the metadata queue and extract events.
-/// Return number of metadata assertions read, and number of Events prodced.
+/// Poll the metadata queue and extract events. Return number of metadata
+/// assertions read, and number of Events prodced.
+///
+/// Synchronously retrieve metadata for connected works.
+///
+/// This is transactional with respect to the queue polled and Events inserted.
+/// The identifiers table and metadata assertions are *not* transactional.
+///
+/// This
+/// enables parallel queue processes to be mutually exclusive and retryable for
+/// queue processing. But the Identifiers and Metadata Assertion functions,
+/// which should be idempotent, can avoid race conditions and potentially steal
+/// work from each other if two processes refer to the same identifiers.
 pub(crate) async fn pump_n(
     pool: &Pool<Postgres>,
     batch_size: i32,
@@ -22,12 +33,15 @@ pub(crate) async fn pump_n(
     let mut tx = pool.begin().await?;
 
     let assertions = poll_assertions(batch_size, &mut tx).await?;
+
     let count_processed = assertions.len();
 
     let events = metadata_assertions_to_events(assertions);
     let count_events = events.len();
 
     for event in events {
+        log::debug!("Extract Event: {:?}", event);
+
         // Subject and Object are optional.
         let subject_entity_id = if let Some(ref id) = event.subject_id {
             Some(resolve_identifier(id, pool).await?)
@@ -41,6 +55,21 @@ pub(crate) async fn pump_n(
             None
         };
 
+        log::debug!("Get assertions...");
+        // Subject entity should have a metadata assertion by now, as it was used to generate events.
+        // Ensure it here for consistency.
+        if let (Some(ref identifier), Some(entity_id)) = (&event.subject_id, subject_entity_id) {
+            metadata_assertion::retrieve::ensure_metadata_assertion(identifier, entity_id, &pool)
+                .await;
+        }
+
+        // Object entity usually won't have metadata assertion yet.
+        if let (Some(ref identifier), Some(entity_id)) = (&event.object_id, object_entity_id) {
+            metadata_assertion::retrieve::ensure_metadata_assertion(identifier, entity_id, &pool)
+                .await;
+        }
+
+        log::debug!("Insert...");
         insert_event(
             &event,
             subject_entity_id,
@@ -56,6 +85,7 @@ pub(crate) async fn pump_n(
     Ok((count_processed, count_events))
 }
 
+/// Extract Events from the given Metadata Assertions.
 fn metadata_assertions_to_events(assertions: Vec<MetadataQueueEntry>) -> Vec<Event> {
     let mut results = vec![];
 
@@ -66,7 +96,14 @@ fn metadata_assertions_to_events(assertions: Vec<MetadataQueueEntry>) -> Vec<Eve
             Ok(json) => Some(json),
             Err(_) => None,
         };
+
         let mut events = crossref::extract_events(&assertion, json);
+        log::info!(
+            "Got {} events from assertion id  {} for {:?}",
+            events.len(),
+            assertion.assertion_id,
+            assertion.subject_id()
+        );
         results.append(&mut events);
     }
 
@@ -82,7 +119,7 @@ pub(crate) async fn drain(pool: &Pool<Postgres>) -> anyhow::Result<()> {
         let (count_assertions_read, count_events_produced) = pump_n(pool, BATCH_SIZE).await?;
         count = count_assertions_read as i32;
 
-        log::info!(
+        log::debug!(
             "Polled {} metadata assertions to make {} events",
             count_assertions_read,
             count_events_produced,

@@ -1,14 +1,16 @@
-use scholarly_identifiers::identifiers::Identifier;
-use sqlx::{prelude::FromRow, Postgres, Transaction};
-
 use super::source::MetadataSourceId;
+use scholarly_identifiers::identifiers::Identifier;
+use sqlx::{prelude::FromRow, Pool, Postgres, Transaction};
 
 /// Reason for making a metadata assertion.
 /// Leaving space for a 'secondary' reason, which is metadata fetched in connection with a primary assertion.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub(crate) enum MetadataAssertionReason {
     /// Metadata fetched because the source indicated there was new metadata available for an entity.
     Primary = 1,
+
+    /// Metadata fetched in connection with a primary event (e.g. a cited work).
+    Secondary = 2,
 }
 
 /// Insert a metadata assertion.
@@ -92,4 +94,20 @@ pub(crate) async fn poll_assertions<'a>(
     .await? as Vec<MetadataQueueEntry>;
 
     Ok(rows)
+}
+
+/// Is there a metadata assertion for this entity?
+pub(crate) async fn has_metadata_assertion(entity_id: i64, pool: &Pool<Postgres>) -> bool {
+    match sqlx::query(
+        "SELECT subject_entity_id
+        FROM metadata_assertion
+        WHERE subject_entity_id = $1;",
+    )
+    .bind(entity_id)
+    .fetch_optional(pool)
+    .await
+    {
+        Ok(Some(_)) => true,
+        _ => false,
+    }
 }
