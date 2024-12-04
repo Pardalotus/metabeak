@@ -93,6 +93,8 @@ pub(crate) async fn harvest_recently_indexed<'a>(
 
     log::info!("Start harvest after {}", after);
     let mut count = 0;
+    let mut tx = pool.begin().await?;
+
     for item in receive_metadata_docs {
         if let Some(indexed) = get_index_date(&item) {
             latest_date = indexed.max(latest_date);
@@ -109,11 +111,14 @@ pub(crate) async fn harvest_recently_indexed<'a>(
                     crate::db::source::MetadataSourceId::Crossref,
                     MetadataAssertionReason::Primary,
                     pool,
+                    &mut tx,
                 )
                 .await?;
             }
         }
     }
+    tx.commit().await?;
+
     log::info!("Stop harvest, retrieved {}, latest {}", count, latest_date);
 
     c.await?.unwrap();
@@ -138,6 +143,7 @@ pub(crate) async fn harvest_secondary_with_filter<'a>(
         );
 
     let mut count = 0;
+    let mut tx = pool.begin().await?;
     for item in receive_metadata_docs {
         if let Some((identifier, json)) = get_identifier_and_json(item) {
             count += 1;
@@ -151,13 +157,17 @@ pub(crate) async fn harvest_secondary_with_filter<'a>(
                 crate::db::source::MetadataSourceId::Crossref,
                 MetadataAssertionReason::Secondary,
                 pool,
+                &mut tx,
             )
             .await?;
         }
     }
 
+    tx.commit().await?;
+
     log::info!("Stop harvest, retrieved {}", count);
 
     c.await?.unwrap();
+
     Ok(())
 }

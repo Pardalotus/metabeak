@@ -2,7 +2,6 @@ use metadata_assertion::crossref::{self};
 use std::path::PathBuf;
 use std::{env, process::exit};
 use structopt::StructOpt;
-use time::{format_description::well_known::Iso8601, OffsetDateTime};
 use tokio::task::JoinSet;
 mod api;
 mod db;

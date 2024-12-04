@@ -19,13 +19,8 @@ const BATCH_SIZE: i32 = 1;
 /// Synchronously retrieve metadata for connected works.
 ///
 /// This is transactional with respect to the queue polled and Events inserted.
-/// The identifiers table and metadata assertions are *not* transactional.
-///
-/// This
-/// enables parallel queue processes to be mutually exclusive and retryable for
-/// queue processing. But the Identifiers and Metadata Assertion functions,
-/// which should be idempotent, can avoid race conditions and potentially steal
-/// work from each other if two processes refer to the same identifiers.
+/// Writes to entities table do not occur in the same transaction, allowing the
+/// creation (and deduplicatoin) of identifiers to be effectively idempotent.
 pub(crate) async fn pump_n(
     pool: &Pool<Postgres>,
     batch_size: i32,
@@ -59,14 +54,18 @@ pub(crate) async fn pump_n(
         // Subject entity should have a metadata assertion by now, as it was used to generate events.
         // Ensure it here for consistency.
         if let (Some(ref identifier), Some(entity_id)) = (&event.subject_id, subject_entity_id) {
-            metadata_assertion::retrieve::ensure_metadata_assertion(identifier, entity_id, &pool)
-                .await;
+            metadata_assertion::retrieve::ensure_metadata_assertion(
+                identifier, entity_id, &pool, &mut tx,
+            )
+            .await;
         }
 
         // Object entity usually won't have metadata assertion yet.
         if let (Some(ref identifier), Some(entity_id)) = (&event.object_id, object_entity_id) {
-            metadata_assertion::retrieve::ensure_metadata_assertion(identifier, entity_id, &pool)
-                .await;
+            metadata_assertion::retrieve::ensure_metadata_assertion(
+                identifier, entity_id, &pool, &mut tx,
+            )
+            .await;
         }
 
         log::debug!("Insert...");
