@@ -2,7 +2,6 @@ use metadata_assertion::crossref::{self};
 use std::path::PathBuf;
 use std::{env, process::exit};
 use structopt::StructOpt;
-use time::{format_description::well_known::Iso8601, OffsetDateTime};
 use tokio::task::JoinSet;
 mod api;
 mod db;
@@ -46,7 +45,7 @@ struct Options {
 
     #[structopt(
         long,
-        help("Fetch all Crossref metadata assertions since given date as secondary metadata assertions (i.e. does not trigger events).")
+        help("Fetch all Crossref metadata assertions matching given filter as secondary metadata assertions (i.e. does not trigger events). Filter e.g. 'from-deposit-date:2021-01-01,until-deposit-date:2021-01-02'.")
     )]
     fetch_crossref_secondary: Option<String>,
 
@@ -116,29 +115,20 @@ async fn main() {
         }
     }
 
-    if let Some(ref date) = opt.fetch_crossref_secondary {
+    if let Some(filter) = opt.fetch_crossref_secondary {
         log::info!(
-            "Poll Crossref for secondary metadata assertions since {}...",
-            date
+            "Poll Crossref for secondary metadata assertions with filter {}...",
+            filter
         );
 
-        if let Ok(date) = time::Date::parse(&date, &Iso8601::DATE) {
-            let after =
-                OffsetDateTime::new_in_offset(date, time::Time::MIDNIGHT, time::UtcOffset::UTC);
-
-            match crossref::metadata_agent::fetch_secondary_metadata_after(&db_pool, after).await {
-                Ok(_) => {
-                    log::info!("Finished polling Crossref for secondary metadata.");
-                }
-                Err(e) => {
-                    log::error!("Error polling Crossref for secondary metadata: {:?}", e);
-                }
+        match crossref::metadata_agent::fetch_secondary_metadata_with_filter(&db_pool, filter).await
+        {
+            Ok(_) => {
+                log::info!("Finished polling Crossref for secondary metadata.");
             }
-        } else {
-            log::error!(
-                "Failed to parse date {:?}",
-                OffsetDateTime::parse(&date, &Iso8601::DATE)
-            );
+            Err(e) => {
+                log::error!("Error polling Crossref for secondary metadata: {:?}", e);
+            }
         }
     }
 

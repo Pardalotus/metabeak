@@ -3,6 +3,8 @@ use backon::ConstantBuilder;
 use backon::Retryable;
 use scholarly_identifiers::identifiers::Identifier;
 use serde_json::Value;
+use sqlx::Postgres;
+use sqlx::Transaction;
 use std::time::Duration;
 use tokio::time::sleep;
 
@@ -11,9 +13,10 @@ use crate::db::source::MetadataSourceId;
 use crate::metadata_assertion::service::assert_metadata;
 
 /// Attempt to fetch and store a metadata assertion for a DOI.
-pub(crate) async fn try_collect_metadata_assertion(
+pub(crate) async fn try_collect_metadata_assertion<'a>(
     identifier: &scholarly_identifiers::identifiers::Identifier,
     pool: &sqlx::Pool<sqlx::Postgres>,
+    tx: &mut Transaction<'a, Postgres>,
 ) -> Result<()> {
     if let Identifier::Doi {
         prefix: _,
@@ -38,6 +41,7 @@ pub(crate) async fn try_collect_metadata_assertion(
                         MetadataSourceId::ContentNegotiation,
                         MetadataAssertionReason::Secondary,
                         pool,
+                        tx,
                     )
                     .await?;
                     Ok(())
