@@ -3,8 +3,10 @@ use anyhow::Result;
 use backon::Retryable;
 use serde::Deserialize;
 use std::sync::mpsc::Sender;
+use std::time::Duration as SD;
 use time::format_description;
 use time::{Duration, OffsetDateTime};
+use tokio::time::sleep;
 
 use backon::ExponentialBuilder;
 
@@ -31,7 +33,30 @@ struct CrossrefResponseMessage {
 
 async fn request_url(url: &str) -> Result<CrossrefResponse> {
     log::debug!("Try {}", url);
-    Ok(reqwest::get(url).await?.json::<CrossrefResponse>().await?)
+
+    let response = reqwest::get(url).await?;
+
+    if response.status() != 200 {
+        log::info!(
+            "Got {} from {}: {:?}",
+            response.status(),
+            url,
+            response.headers()
+        );
+    }
+
+    // Special case for slow down.
+    if response.status() == 429 {
+        log::error!("Slowing down!");
+        sleep(SD::from_secs(10)).await;
+    }
+
+    let text = response.text().await?;
+
+    // Parse the response to ensure we got back valid JSON.
+    let deserialised = serde_json::from_str::<CrossrefResponse>(&text)?;
+
+    Ok(deserialised)
 }
 
 /// Fetch historical data until the given [`not_before`] date.
@@ -61,18 +86,13 @@ pub(crate) async fn fetch_from_indexed(
     Ok((response.message.items, response.message.next_cursor))
 }
 
-/// Fetch documents deposited with Crossref since the date.
-/// The use case for this query is for larger time ranges where stopping iteration at the exact time-of-day isn't necessary.
-/// As we we expect to consume the entire result set, sorting isn't requested.
-pub(crate) async fn fetch_from_deposited(
+/// Fetch documents matching Crossref filter.
+pub(crate) async fn fetch_with_filter(
     rows: u32,
     cursor: &str,
-    from_date: &str,
+    filter: &str,
 ) -> Result<(Vec<serde_json::Value>, String)> {
-    let url = format!(
-        "{}?filter=from-deposit-date:{}&rows={}&cursor={}",
-        BASE, from_date, rows, cursor
-    );
+    let url = format!("{}?filter={}&rows={}&cursor={}", BASE, filter, rows, cursor);
 
     let request = || request_url(&url);
     let response = request.retry(ExponentialBuilder::default()).await?;
@@ -80,7 +100,8 @@ pub(crate) async fn fetch_from_deposited(
     // On first page log how many results might be present.
     if cursor == "*" {
         log::info!(
-            "Fetching results since deposit date, total possible {} ",
+            "Fetching results with filter {}, total possible {} ",
+            filter,
             response.message.total_results
         );
     }
@@ -169,12 +190,10 @@ pub(crate) async fn harvest_precise_index_date(
     Ok(())
 }
 
-/// Harvest metadata deposited with Crossref since date to channel.
-///
-/// This is designed for large date ranges, so consumes the entire result rather than stopping at a precise date-time.
-pub(crate) async fn harvest_deposited_date_to_chan(
+/// Harvest metadata matching filter to channel.
+pub(crate) async fn harvest_with_filter_to_chan(
     chan: Sender<serde_json::Value>,
-    after: OffsetDateTime,
+    filter: String,
 ) -> Result<()> {
     log::debug!("Harvest to channel");
 
@@ -182,12 +201,8 @@ pub(crate) async fn harvest_deposited_date_to_chan(
     let mut cursor = String::from("*");
     let mut again = true;
 
-    let ymd_format = format_description::parse("[year]-[month]-[day]").unwrap();
-
-    let from_index_date = after.format(&ymd_format).unwrap();
-
     while again {
-        let result = fetch_from_deposited(rows, &cursor, &from_index_date).await;
+        let result = fetch_with_filter(rows, &cursor, &filter).await;
 
         match result {
             Ok((items, new_cursor)) => {
